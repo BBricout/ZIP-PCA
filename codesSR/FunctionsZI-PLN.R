@@ -60,7 +60,9 @@ ELBOi <- function(datai, mStep, eStepi){
   elboi <- sum(nui*eStepi$xii - log(1 + exp(nui)))
   elboi <- elboi - 0.5*(sum(eStepi$mi^2) + sum(eStepi$Si))
   elboi <- elboi + sum(eStepi$xii * (-Ai + datai$Yi*(mui + mStep$C%*%eStepi$mi) - datai$logFactYi))
-  elboi <- elboi + sum(eStepi$xii * log(eStepi$xii/(1 - eStepi$xii)) + log(1 - eStepi$xii))
+  # Excludes xii=0 or 1, before computing the entropy
+  xii <- eStepi$xii[which(eStepi$xii*(1-eStepi$xii) > 0)]
+  elboi <- elboi + sum(xii * log(xii/(1 - xii)) + log(1 - xii))
   elboi <- elboi + 0.5*(length(eStepi$mi) + sum(log(eStepi$Si)))
   return(elboi)
   }
@@ -92,16 +94,19 @@ ElboSi <- function(Si, datai, mStep, eStepi){
 ElboGradSi <- function(Si, datai, mStep, eStepi){
   mui <- as.vector(datai$Xi%*%mStep$beta)
   Ai <- exp(mui + eStepi$mi%*%t(mStep$C) + 0.5*diag(mStep$C%*%diag(Si)%*%t(mStep$C)))
-  as.vector(0.5*1/Si - 1 - (eStepi$xii*Ai)%*%mStep$C)
+  as.vector(0.5/Si - 0.5 - (eStepi$xii*Ai)%*%mStep$C)
 }
 
 VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-4){
   n <- nrow(data$Y); p <- ncol(data$Y); d <- ncol(data$X); q <- ncol(eStep$M)
   nuMuA <- NuMuA(data=data, mStep=mStep, eStep=eStep)
   nu <- nuMuA$nu; mu <- nuMuA$mu; A <- nuMuA$A
-  xiLogit <- nu - A + data$Y*(eStep$M%*%t(mStep$C) + mu) - data$logFactY
+  # xij, for Yij = 0:
+  # xiLogit <- nu - A + data$Y*(eStep$M%*%t(mStep$C) + mu) - data$logFactY
+  xiLogit <- nu - A 
   xi <- plogis(xiLogit)
   xi <- (xi + tolXi) / (1 + 2*tolXi)
+  xi[which(data$Y>0)] <- 1
   eStep$xi <- xi
   M <- t(sapply(1:n, function(i){
     datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], logFactYi=data$logFactY[i, ])
