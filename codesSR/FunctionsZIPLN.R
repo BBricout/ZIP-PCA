@@ -229,7 +229,7 @@ VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4){
     if(iter%%round(sqrt(iterMax))==0){
       plot(elboPath[1:iter], type='b', xlab='iter', ylim=quantile(elboPath[1:iter], probs=c(0.1, 1), na.rm=TRUE))
       cat(' /', iter, ':', elboPath[iter], diff)
-    }else{cat('', iter)}
+    }#else{cat('', iter)}
   }
   cat('\n')
   pred <- NuMuA(data=data, mStep=mStep, eStep=eStep)

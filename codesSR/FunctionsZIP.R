@@ -4,7 +4,7 @@
 #########################################################################
 
 # Initialisation
-init <- function(X, Y, Y0){
+initZIP <- function(X, Y, Y0){
   gamma <- glm(Y0 ~ -1 + X, family='binomial')$coef
   beta <- glm(Y ~ -1 + X, family='poisson')$coef
   return(list(gamma=gamma, beta=beta))
@@ -30,7 +30,7 @@ logLik <- function(gamma, beta, Y, Y0, X){
 # Algorithme EM
 EmZIP <- function(X, Y, tol=1e-6, iterMax=1e3){
   Y0 <- 1*(Y==0)
-  start <- init(X, Y, Y0)
+  start <- initZIP(X, Y, Y0)
   gamma <- start$gamma; beta <- start$beta
   diff <- 2*tol; iter <- 0
   logL <- rep(NA, iterMax)
@@ -39,13 +39,11 @@ EmZIP <- function(X, Y, tol=1e-6, iterMax=1e3){
     # Etape E
     pi <- plogis(X%*%gamma); lambda <- exp(X%*%beta)
     tau <- as.vector(pi*Y0 / (pi + (1-pi)*exp(-lambda)))
-    
     # Etape M
     alphaNew <- optim(par=gamma, fn=objGamma, gr=gradGamma, Y0=Y0, X=X, tau=tau, 
                       control=list(fnscale=-1))$par
     betaNew <- optim(par=beta, fn=objBeta, gr=gradBeta, Y=Y, X=X, tau=tau, 
                      control=list(fnscale=-1))$par
-    
     # Test & mise à jour
     diff <- max(abs(c(gamma, beta) - c(alphaNew, betaNew)))
     logL[iter] <- logLik(gamma, beta, Y, Y0, X)

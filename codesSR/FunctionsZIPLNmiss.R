@@ -2,28 +2,11 @@
 
 ################################################################################
 # Simul
-SimZiPLN <- function(n, p, d, q, obs=0.9, beta0=2){
-  X <- matrix(rnorm(n*p*d), n*p, d); X[, 1] <- 1
-  ij <- cbind(rep(1:n, p), rep(1:p, each=n))
-  # presence
-  gamma <- rnorm(d)/sqrt(d)
-  nu <- matrix(X%*%gamma, n, p)
-  probU <- plogis(nu)
-  U <- matrix(rbinom(n*p, 1, probU), n, p)
-  # latent
-  W <- matrix(rnorm(n*q), n, q)
-  C <- matrix(rnorm(p*q), p, q)/sqrt(q)
-  Z <- W%*%t(C)
-  # abundance
-  beta <- rnorm(d)/sqrt(d); beta[1] <- beta[1] + beta0
-  mu <- matrix(X%*%beta, n, p)
-  lambdaY <- exp(mu + Z)
-  Yall <- matrix(rpois(n*p, lambdaY), n, p)
-  Ytrue <- Yall*U
-  # Missing
-  Omega <- matrix(rbinom(n*p, 1, obs), n, p)
-  Y <- Ytrue * Omega
-  return(list(X=X, Y=Y, Omega=Omega, ij=ij, U=U, W=W, Z=Z, Yall=Yall, Ytrue=Ytrue, gamma=gamma, beta=beta, C=C))
+SimZiPLNmiss <- function(sim, obs=1){
+  sim$Omega <- matrix(rbinom(prod(dim(sim$Y)), 1, obs), nrow(sim$Y), ncol(sim$Y))
+  sim$Yfull <- sim$Y
+  sim$Y <- sim$Y * sim$Omega
+  return(sim)
 }
 NuMuA <- function(data, mStep, eStep){
   nu <- matrix(data$X%*%mStep$gamma, n, p)
@@ -35,15 +18,28 @@ NuMuA <- function(data, mStep, eStep){
 
 ################################################################################
 # Init
-InitZiPLN <- function(data){
-  reg <- lm(as.vector(log(1+data$Y)) ~ -1 + data$X)
+InitZiPLNold <- function(data){
+  pres <- which(data$Omega==1)
+  reg <- lm(as.vector(log(1+data$Y)[pres]) ~ -1 + data$X[pres, ])
   res <- matrix(0, nrow(data$Y), ncol(data$Y))
-  res[which(data$Omega==1)] <- reg$residuals
+  res[pres] <- reg$residuals
   pca <- prcomp(res, rank=q)
   mStep <- list(gamma=as.vector(glm(as.vector(1*(data$Y > 0)) ~ -1 + data$X, family='binomial')$coef), 
                 beta=reg$coef, 
                 C=pca$rotation %*% diag(pca$sdev[1:q]))
-  eStep <- list(xi=matrix(mean(data$Y > 0), n, p), M=matrix(0, n, q), S=matrix(1e-4, n, q))
+  eStep <- list(xi=matrix(sum(data$Omega*(data$Y > 0))/sum(data$Omega), n, p), M=matrix(0, n, q), S=matrix(1e-4, n, q))
+  return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca))
+}
+InitZiPLN <- function(data){
+  pres <- which(data$Omega==1)
+  reg <- lm(as.vector(log(1+data$Y))[pres] ~ -1 + data$X[pres, ])
+  res <- matrix(0, nrow(data$Y), ncol(data$Y))
+  res[pres] <- reg$residuals
+  pca <- prcomp(res, rank=q)
+  zip <- EmZIP(X=data$X[pres, ], Y=as.vector(data$Y)[pres])
+  mStep <- list(gamma=zip$gamma, beta=zip$beta, 
+                C=pca$rotation %*% diag(pca$sdev[1:q]))
+  eStep <- list(xi=matrix(sum(data$Omega*(data$Y > 0))/sum(data$Omega), n, p), M=matrix(0, n, q), S=matrix(1e-4, n, q))
   return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca))
 }
 OracleZiPLN <- function(sim){
@@ -105,9 +101,9 @@ VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-4){
   n <- nrow(data$Y); p <- ncol(data$Y); d <- ncol(data$X); q <- ncol(eStep$M)
   nuMuA <- NuMuA(data=data, mStep=mStep, eStep=eStep)
   nu <- nuMuA$nu; mu <- nuMuA$mu; A <- nuMuA$A
-  xi <- plogis(nu - A)
+  xi <- plogis(nu - data$Omega*A)
   xi <- (xi + tolXi) / (1 + 2*tolXi)
-  xi[which(data$Y>0)] <- 1
+  xi[which(data$Omega*data$Y>0)] <- 1
   eStepTmp <- list(xi=xi, M=eStep$M, S=eStep$S)
   if(ELBO(data=data, mStep=mStep, eStep=eStepTmp) > ELBO(data=data, mStep=mStep, eStep=eStep)){
     eStep$xi <- xi
@@ -204,7 +200,7 @@ VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4){
     if(iter%%round(sqrt(iterMax))==0){
       plot(elboPath[1:iter], type='b', xlab='iter', ylim=quantile(elboPath[1:iter], probs=c(0.1, 1), na.rm=TRUE))
       cat(' /', iter, ':', elboPath[iter], diff)
-    }else{cat('', iter)}
+    }#else{cat('', iter)}
   }
   cat('\n')
   pred <- NuMuA(data=data, mStep=mStep, eStep=eStep)

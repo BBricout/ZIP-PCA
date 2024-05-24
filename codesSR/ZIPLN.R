@@ -1,12 +1,11 @@
 # Sim and fit ZI-PLN
 
 rm(list=ls()); par(mfrow=c(1, 1), pch=20); palette('R3')
-seed <- 6; set.seed(seed)
+seed <- 5; set.seed(seed)
 # seed <- .Random.seed
 source('FunctionsZIP.R'); 
 source('FunctionsZIPLN.R')
 simDir <- '../simulSR/'
-library(PLNmodels)
 
 # Parms
 n <- 100; d <- 5; p <- 10; q <- 2
@@ -54,6 +53,7 @@ plot(true$gamma, vem$mStep$gamma, ylim=range(c(vem$mStep$gamma, oracle$mStep$gam
 points(true$gamma, oracle$mStep$gamma, col=2)
 points(true$gamma, init$mStep$gamma, col=8)
 boxplot(vem$eStep$xi ~ true$U)
+hist(vem$eStep$xi, breaks=sqrt(n*p))
 plot(true$beta, vem$mStep$beta); abline(a=0, b=1, h=0, v=0)
 points(true$beta, oracle$mStep$beta, col=2)
 points(true$beta, init$mStep$beta, col=8)
