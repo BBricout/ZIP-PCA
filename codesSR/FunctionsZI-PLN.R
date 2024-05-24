@@ -66,15 +66,13 @@ ELBOi <- function(datai, mStep, eStepi){
   elboi <- elboi + 0.5*(length(eStepi$mi) + sum(log(eStepi$Si)))
   return(elboi)
   }
-
 ELBO <- function(data, mStep, eStep){
-    elbo <- sum(sapply(1:nrow(data$Y), function(i){
-      datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], logFactYi=data$logFactY[i, ])
-      eStepi <- list(xii=eStep$xi[i, ], mi=eStep$M[i, ], Si=eStep$S[i, ])
-      ELBOi(datai=datai, mStep=mStep, eStepi=eStepi)
-    }))
-    return(elbo)
-  }
+  sum(sapply(1:nrow(data$Y), function(i){
+    datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], logFactYi=data$logFactY[i, ])
+    eStepi <- list(xii=eStep$xi[i, ], mi=eStep$M[i, ], Si=eStep$S[i, ])
+    ELBOi(datai=datai, mStep=mStep, eStepi=eStepi)
+  }))
+}
   
 ################################################################################
 # VE step
@@ -103,8 +101,7 @@ VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-4){
   nu <- nuMuA$nu; mu <- nuMuA$mu; A <- nuMuA$A
   # xij, for Yij = 0:
   # xiLogit <- nu - A + data$Y*(eStep$M%*%t(mStep$C) + mu) - data$logFactY
-  xiLogit <- nu - A 
-  xi <- plogis(xiLogit)
+  xi <- plogis(nu - A)
   xi <- (xi + tolXi) / (1 + 2*tolXi)
   xi[which(data$Y>0)] <- 1
   eStep$xi <- xi
