@@ -1,7 +1,7 @@
 # Sim and fit ZI-PLN
 
 rm(list=ls()); par(mfrow=c(1, 1), pch=20); palette('R3')
-seed <- 1; set.seed(seed)
+seed <- 10; set.seed(seed)
 # seed <- .Random.seed
 source('FunctionsZIP.R'); 
 source('FunctionsZIPLN.R')
