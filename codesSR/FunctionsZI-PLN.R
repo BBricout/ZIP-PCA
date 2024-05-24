@@ -38,7 +38,7 @@ InitZiPLN <- function(data){
   mStep <- list(gamma=as.vector(glm(as.vector(1*(data$Y > 0)) ~ -1 + data$X, family='binomial')$coef), 
                 beta=reg$coef, 
                 C=pca$rotation %*% diag(pca$sdev[1:q]))
-  eStep <- list(xi=matrix(mean(data$Y > 0), n, p), M=matrix(0, n, q), S=true$S)
+  eStep <- list(xi=matrix(mean(data$Y > 0), n, p), M=matrix(0, n, q), S=matrix(1e-4, n, q))
   return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca))
 }
 OracleZiPLN <- function(sim){
@@ -176,7 +176,7 @@ VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-5, tolS=1e-5){
     eStepNew <- VEstep(data=data, mStep=mStepNew, eStep=eStep, tolXi=tolXi, tolS=tolS)
     elboPath[iter] <- ELBO(data=data, mStep=mStepNew, eStep=eStepNew)
     if(elboPath[iter] < elboPath[iter-1]){
-      cat(iter, ':', 'E-1', ELBO(data=data, mStep=mStep, eStep=eStep), 
+      cat('', iter, ':', 'E-1', ELBO(data=data, mStep=mStep, eStep=eStep), 
           'M', ELBO(data=data, mStep=mStepNew, eStep=eStep), 
           'E', ELBO(data=data, mStep=mStepNew, eStep=eStepNew), '\n')
     }
@@ -189,6 +189,7 @@ VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-5, tolS=1e-5){
   }
   cat('\n')
   pred <- NuMuA(data=data, mStep=mStep, eStep=eStep)
+  pred$Yhat <- eStep$xi * pred$A
   elboPath <- elboPath[1:iter]
   return(list(mStep=mStep, eStep=eStep, pred=pred, iter=iter, elboPath=elboPath, elbo=elboPath[iter]))
 }

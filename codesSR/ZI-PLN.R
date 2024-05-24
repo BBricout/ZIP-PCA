@@ -29,13 +29,13 @@ points(true$gamma, init$mStep$gamma, col=4)
 boxplot(vem$eStep$xi ~ true$U)
 plot(true$beta, vem$mStep$beta); abline(a=0, b=1, h=0, v=0)
 points(true$beta, oracle$mStep$beta, col=2)
-points(true$beta, init$mStep$beta, col=4)
-plot(true$C%*%t(true$C), vem$mStep$C%*%t(vem$mStep$C), ylim=range(cbind(vem$mStep$C%*%t(vem$mStep$C), oracle$vem$mStep$C%*%t(oracle$vem$mStep$C)))); abline(a=0, b=1, h=0, v=0)
+points(true$beta, init$mStep$beta, col=8)
+plot(true$C%*%t(true$C), vem$mStep$C%*%t(vem$mStep$C), ylim=range(cbind(vem$mStep$C%*%t(vem$mStep$C), oracle$mStep$C%*%t(oracle$mStep$C)))); abline(a=0, b=1, h=0, v=0)
 points(true$C%*%t(true$C), oracle$mStep$C%*%t(oracle$mStep$C), col=2);
-points(true$C%*%t(true$C), init$mStep$C%*%t(init$mStep$C), col=4);
+points(true$C%*%t(true$C), init$mStep$C%*%t(init$mStep$C), col=8);
 # plot(true$W, vem$eStep$M); abline(a=0, b=1, h=0, v=0)
 plot(true$Z, vem$eStep$M%*%t(vem$mStep$C)); abline(a=0, b=1, h=0, v=0)
-plot(1+data$Y, 1+vem$eStep$xi*vem$pred$A, log='xy', xlab='Y', ylab='pred'); abline(a=0, b=1, h=0, v=0)
+plot(1+data$Y, 1+vem$pred$Yhat, log='xy', xlab='Y', ylab='pred'); abline(a=0, b=1, h=0, v=0)
 
 print(c(sum(diff(elboPath) < 0), 
         mean(diff(elboPath)[which(diff(elboPath) < 0)][-1]), 
@@ -44,4 +44,3 @@ print(c(sum(diff(elboPath) < 0),
 lm(as.vector(mStep$C%*%t(mStep$C)) ~ -1 + as.vector(true$C%*%t(true$C)))$coef
 pseudoCovW <- t(eStep$M)%*%eStep$M/n + diag(colMeans(eStep$S))
 pseudoCovW
-cov2cor(pseudoCovW)
