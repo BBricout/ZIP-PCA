@@ -60,7 +60,8 @@ ELBOi <- function(datai, mStep, eStepi){
   Ai <- exp(mui + as.vector(mStep$C%*%eStepi$mi) + 0.5*diag(mStep$C%*%diag(eStepi$Si)%*%t(mStep$C)))
   elboi <- sum(nui*eStepi$xii - log(1 + exp(nui)))
   elboi <- elboi - 0.5*(sum(eStepi$mi^2) + sum(eStepi$Si))
-  elboi <- elboi + sum(datai$Omegai * eStepi$xii * (-Ai + datai$Yi*(mui + mStep$C%*%eStepi$mi) - datai$logFactYi))
+  elboi <- elboi + sum(datai$Omegai*eStepi$xii * 
+                         (-Ai + datai$Yi*(mui + mStep$C%*%eStepi$mi) - datai$logFactYi))
   # Excludes xii=0 or 1, before computing the entropy
   xii <- eStepi$xii[which(eStepi$xii*(1-eStepi$xii) > 0)]
   elboi <- elboi + sum(xii * log(xii/(1 - xii)) + log(1 - xii))
@@ -151,7 +152,8 @@ ElboBeta <- function(beta, data, mStep, eStep){
   ELBO(data=data, mStep=mStep, eStep=eStep)
 }
 ElboGradBeta <- function(beta, data, mStep, eStep){
-  as.vector(t(data$X) %*% as.vector(data$Omega*eStep$xi*(data$Y - NuMuA(data=data, mStep=mStep, eStep=eStep)$A)))
+  as.vector(t(data$X) %*% as.vector(data$Omega * eStep$xi * 
+                                      (data$Y - NuMuA(data=data, mStep=mStep, eStep=eStep)$A)))
 }
 ElboC <- function(vecC, data, mStep, eStep){
   mStep$C <- matrix(vecC, ncol(data$Y), ncol(eStep$M))

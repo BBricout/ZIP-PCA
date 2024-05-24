@@ -1,14 +1,16 @@
 # Sim and fit ZI-PLN
 
 rm(list=ls()); par(mfrow=c(1, 1), pch=20); palette('R3')
-seed <- 2; set.seed(seed)
+seed <- 1; set.seed(seed)
 # seed <- .Random.seed
 source('FunctionsZIP.R')
 source('FunctionsZIPLNmiss.R')
 simDir <- '../simulSR/'
+figDir <- '../plotsSR/'
+exportFig <- TRUE
 
 # Parms
-n <- 100; d <- 5; p <- 10; q <- 2; obs <- 0.99
+n <- 100; d <- 5; p <- 10; q <- 2; obs <- 0.9
 
 # Simul
 simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
@@ -22,7 +24,6 @@ if(!file.exists(simFile)){
   sim <- SimZiPLNmiss(sim=sim, obs=obs)
   save(sim, file=simFile)
 }else{load(simFile)}
-sim$Y[which(sim$Omega==0)] <- 12
 data <- list(X=sim$X, Y=sim$Y, Omega=sim$Omega, ij=sim$ij, logFactY=lgamma(sim$Y+1))
 true <- list(gamma=sim$gamma, beta=sim$beta, C=sim$C, 
              U=sim$U, W=sim$W, Z=sim$Z,
@@ -49,12 +50,13 @@ if(!file.exists(fitFile)){
 }else{load(fitFile)}
 
 # Results
+if(exportFig){png(paste0(figDir, fitName, '.png'))}
 par(mfrow=c(3, 3), pch=20, cex=0.75)
 plot(vem$elboPath, type='b', xlab='iter', ylim=quantile(vem$elboPath, probs=c(0.1, 1)))
 plot(true$gamma, vem$mStep$gamma, ylim=range(c(vem$mStep$gamma, oracle$mStep$gamma))); abline(a=0, b=1, h=0, v=0)
 points(true$gamma, oracle$mStep$gamma, col=2)
 points(true$gamma, init$mStep$gamma, col=8)
-boxplot(vem$eStep$xi ~ true$U)
+boxplot(vem$eStep$xi ~ true$U, col=2-data$Omega)
 hist(vem$eStep$xi, breaks=sqrt(n*p))
 plot(true$beta, vem$mStep$beta); abline(a=0, b=1, h=0, v=0)
 points(true$beta, oracle$mStep$beta, col=2)
@@ -65,10 +67,8 @@ points(true$C%*%t(true$C), init$mStep$C%*%t(init$mStep$C), col=8);
 # plot(true$W, vem$eStep$M); abline(a=0, b=1, h=0, v=0)
 plot(true$Z, vem$eStep$M%*%t(vem$mStep$C)); abline(a=0, b=1, h=0, v=0)
 plot(1+sim$Yfull, 1+vem$pred$Yhat, log='xy', xlab='Y', ylab='pred', col=2-data$Omega); abline(a=0, b=1, h=0, v=0)
-
-print(c(sum(diff(vem$elboPath) < 0), 
-        mean(diff(vem$elboPath)[which(diff(vem$elboPath) < 0)][-1]), 
-        min(diff(vem$elboPath))))
+points(1+sim$Yfull[which(data$Omega==0)], 1+vem$pred$Yhat[which(data$Omega==0)], col=2)
+if(exportFig){dev.off()}
 
 lm(as.vector(vem$mStep$C%*%t(vem$mStep$C)) ~ -1 + as.vector(true$C%*%t(true$C)))$coef
 pseudoCovW <- t(vem$eStep$M)%*%vem$eStep$M/n + diag(colMeans(vem$eStep$S))
