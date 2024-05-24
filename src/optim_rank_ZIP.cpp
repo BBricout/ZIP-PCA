@@ -54,11 +54,50 @@ double log_factorial(double n) {
     return lgamma(n + 1);
 }
 
-mat log_factorial_matrix(const mat& Y) {
-    mat result = Y;
+arma::mat log_factorial_matrix(const arma::mat& Y) {
+    arma::mat result = Y;
     result.transform([](double val) { return log_factorial(val); });
     return result;
 }
+
+arma::mat ifelse_mat(const arma::mat & Y, arma::mat & A, arma::mat & nu){
+    int n = Y.n_rows;
+    int p = Y.n_cols;
+    
+    arma::Mat<double> E(n, p, arma::fill::none); 
+    
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < p; ++j) {
+            if (Y(i,j) == 0) {
+                E(i,j) = nu(i,j) - A(i,j);
+            } else {
+                E(i,j) = 1;
+            }
+        }
+    }
+   
+   return E;
+}
+
+double entropie_logis(arma::mat & xi){
+   
+    int n = xi.n_rows;
+    int p = xi.n_cols;
+    
+    double H = 0;
+    
+    for (size_t i = 0; i < n; ++i) {
+    	for (size_t j = 0; j < p; ++j){
+    		if (xi(i,j) == 0 || xi(i,j) == 1){
+    		H = H ;
+    		} else {
+    		H = H + xi(i,j) * log(xi(i,j)/(1 - xi(i,j))) + log(1 - xi(i,j));
+    		}
+    	}
+    }
+     return H ;
+}
+
 	
 
 
@@ -70,7 +109,7 @@ mat log_factorial_matrix(const mat& Y) {
 // Rank (q) is already determined by param dimensions ; not passed anywhere
 
 // [[Rcpp::export]]
-Rcpp::List nlopt_optimize_rank_cov(
+Rcpp::List nlopt_optimize_ZIP(
     const Rcpp::List & data  , // List(Y, R, X)
     const Rcpp::List & params, // List(B, C, M, S)
     const Rcpp::List & config  // List of config values
@@ -115,17 +154,20 @@ Rcpp::List nlopt_optimize_rank_cov(
         }
     }
     
+    std::vector<double> objective_values;
+    
 
     // Optimize
-    auto objective_and_grad = [&metadata, &O, &X, &Y, &w, &R](const double * params, double * grad) -> double {
+    auto objective_and_grad = [&metadata, &X, &Y, &R, &objective_values](const double * params, double * grad) -> double {
         const arma::mat B = metadata.map<B_ID>(params);
         const arma::mat D = metadata.map<D_ID>(params);
         const arma::mat C = metadata.map<C_ID>(params);
         const arma::mat M = metadata.map<M_ID>(params);
         const arma::mat S = metadata.map<S_ID>(params);
         
+
+        //std::cout << M(0,0) << std::endl;
         
-       
 	
 	int n = Y.n_rows;
 	int p = Y.n_cols;
@@ -141,44 +183,44 @@ Rcpp::List nlopt_optimize_rank_cov(
         arma::mat A = exp(Z + 0.5 * S * (C % C).t());
         arma::vec vecA = vectorise(A);
         arma::mat log_fact_Y = log_factorial_matrix(Y);
-        arma::mat pi = exp(nu)/(1 + exp(nu));
+        arma::mat pi = 1/(1 + exp(-nu));
         arma::vec vecpi = vectorise(pi);
-        arma::mat E = nu - A + Y % (mu + M*C.t()) - log_fact_Y;
-        arma::mat xi = log(E) - log(1. - E);
+    	arma::mat E = ifelse_mat(Y, A, nu);
+        arma::mat xi = 1/(1 + exp(-E));
         arma::vec vecxi = vectorise(xi);
-	
+
         
         
-        double objective = -(accu(R % (xi % (nu - log(1 + exp(nu)) + Y % (nu + M*C.t()) - A - log_fact_Y + log(xi) - log (1. - xi)) + log(1 - xi)) - 0.5 * accu(diagmat(w) * (M % M + S - log(S))) + n*q/2);
-     
-     	std::cout << objective << std::endl;      
-    
+        double objective = -(accu(xi % nu - log((1 + exp(-nu))/exp(-nu))) + accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y)) - 1/2 * accu(M%M + S - log(S)) + entropie_logis(xi) + n*q/2);
+        std::cout << objective << std::endl;
+        objective_values.push_back(objective);
         
 
         metadata.map<B_ID>(grad) = - X.t() *  (vecR % vecxi % (vecY - vecA)) ;
         metadata.map<D_ID>(grad) = - X.t() *  (vecR % (vecxi - vecpi)) ;
-	metadata.map<C_ID>(grad) = -((R % xi % (Y -A)).t() * M - (R % xi % A).t() * S * C);
+	metadata.map<C_ID>(grad) = -((R % xi % (Y -A)).t() * M - (R % xi % A).t() * S % C);
         metadata.map<M_ID>(grad) = - (R % xi % (Y - A) * C - M);
         metadata.map<S_ID>(grad) =  - 1/2 * (1/S - 1. - R % xi % A * (C%C));
+
         return objective;
     };
     OptimizerResult result = minimize_objective_on_parameters(optimizer.get(), objective_and_grad, parameters);
 
     // Model and variational parameters
     arma::mat B = metadata.copy<B_ID>(parameters.data());
+    arma::mat D = metadata.copy<D_ID>(parameters.data());
     arma::mat C = metadata.copy<C_ID>(parameters.data());
     arma::mat M = metadata.copy<M_ID>(parameters.data());
     arma::mat S = metadata.copy<S_ID>(parameters.data());
-
-
+  
 
     return Rcpp::List::create(
         Rcpp::Named("B", B),
+        Rcpp::Named("D", D),
         Rcpp::Named("C", C),
         Rcpp::Named("M", M),
         Rcpp::Named("S", S),
-        Rcpp::Named("Z", Z),
-        Rcpp::Named("A", A),
+        Rcpp::Named("objective_values", objective_values),
         Rcpp::Named("monitoring", Rcpp::List::create(
             Rcpp::Named("status", static_cast<int>(result.status)),
             Rcpp::Named("backend", "nlopt"),
