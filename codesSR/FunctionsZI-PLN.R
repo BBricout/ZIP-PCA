@@ -92,15 +92,15 @@ ElboSi <- function(Si, datai, mStep, eStepi){
 ElboGradSi <- function(Si, datai, mStep, eStepi){
   mui <- as.vector(datai$Xi%*%mStep$beta)
   Ai <- exp(mui + eStepi$mi%*%t(mStep$C) + 0.5*diag(mStep$C%*%diag(Si)%*%t(mStep$C)))
-  as.vector(0.5/Si - 0.5 - (eStepi$xii*Ai)%*%mStep$C)
+  as.vector(0.5/Si - 0.5 - (eStepi$xii*Ai)%*%(mStep$C)^2)
 }
 
-VEstep <- function(data, mStep, eStep, tolXi=1e-5, tolS=1e-4){
+VEstep <- function(data, mStep, eStep, tolXi=1e-5, tolS=1e-5){
   n <- nrow(data$Y); p <- ncol(data$Y); d <- ncol(data$X); q <- ncol(eStep$M)
   nuMuA <- NuMuA(data=data, mStep=mStep, eStep=eStep)
   nu <- nuMuA$nu; mu <- nuMuA$mu; A <- nuMuA$A
   xi <- plogis(nu - A)
-  xi <- (xi + tolXi) / (1 + 2*tolXi)
+  # xi <- (xi + tolXi) / (1 + 2*tolXi)
   xi[which(data$Y>0)] <- 1
   eStep$xi <- xi
   M <- t(sapply(1:n, function(i){
@@ -163,3 +163,32 @@ Mstep <- function(data, mStep, eStep){
   return(list(gamma=gamma, beta=beta, C=C))
 }
 
+################################################################################
+# VEM
+VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-5, tolS=1e-5){
+  elboPath <- rep(NA, iterMax)
+  diff <- 2*tol; iter <- 1
+  elboPath[iter] <- ELBO(data=data, mStep=mStep, eStep=eStep)
+  cat(iter, ':', elboPath[iter], diff)
+  while((iter < iterMax) & (diff > tol)){
+    iter <- iter+1
+    mStepNew <- Mstep(data=data, mStep=mStep, eStep=eStep)
+    eStepNew <- VEstep(data=data, mStep=mStepNew, eStep=eStep, tolXi=tolXi, tolS=tolS)
+    elboPath[iter] <- ELBO(data=data, mStep=mStepNew, eStep=eStepNew)
+    if(elboPath[iter] < elboPath[iter-1]){
+      cat(iter, ':', 'E-1', ELBO(data=data, mStep=mStep, eStep=eStep), 
+          'M', ELBO(data=data, mStep=mStepNew, eStep=eStep), 
+          'E', ELBO(data=data, mStep=mStepNew, eStep=eStepNew), '\n')
+    }
+    diff <- max(max(abs(eStepNew$M - eStep$M)), max(abs(mStepNew$C - mStep$C)))
+    mStep <- mStepNew; eStep <- eStepNew
+    if(iter%%round(sqrt(iterMax))==0){
+      plot(elboPath[1:iter], type='b', xlab='iter', ylim=quantile(elboPath[1:iter], probs=c(0.1, 1), na.rm=TRUE))
+      cat(' /', iter, ':', elboPath[iter], diff)
+    }else{cat('', iter)}
+  }
+  cat('\n')
+  pred <- NuMuA(data=data, mStep=mStep, eStep=eStep)
+  elboPath <- elboPath[1:iter]
+  return(list(mStep=mStep, eStep=eStep, pred=pred, iter=iter, elboPath=elboPath, elbo=elboPath[iter]))
+}
