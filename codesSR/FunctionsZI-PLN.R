@@ -65,7 +65,7 @@ ELBOi <- function(datai, mStep, eStepi){
   elboi <- elboi + sum(xii * log(xii/(1 - xii)) + log(1 - xii))
   elboi <- elboi + 0.5*(length(eStepi$mi) + sum(log(eStepi$Si)))
   return(elboi)
-  }
+}
 ELBO <- function(data, mStep, eStep){
   sum(sapply(1:nrow(data$Y), function(i){
     datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], logFactYi=data$logFactY[i, ])
@@ -95,12 +95,10 @@ ElboGradSi <- function(Si, datai, mStep, eStepi){
   as.vector(0.5/Si - 0.5 - (eStepi$xii*Ai)%*%mStep$C)
 }
 
-VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-4){
+VEstep <- function(data, mStep, eStep, tolXi=1e-5, tolS=1e-4){
   n <- nrow(data$Y); p <- ncol(data$Y); d <- ncol(data$X); q <- ncol(eStep$M)
   nuMuA <- NuMuA(data=data, mStep=mStep, eStep=eStep)
   nu <- nuMuA$nu; mu <- nuMuA$mu; A <- nuMuA$A
-  # xij, for Yij = 0:
-  # xiLogit <- nu - A + data$Y*(eStep$M%*%t(mStep$C) + mu) - data$logFactY
   xi <- plogis(nu - A)
   xi <- (xi + tolXi) / (1 + 2*tolXi)
   xi[which(data$Y>0)] <- 1

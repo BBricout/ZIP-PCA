@@ -1,7 +1,8 @@
 # Sim and fit ZI-PLN
 
-rm(list=ls()); par(mfrow=c(1, 1), pch=20)
+rm(list=ls()); par(mfrow=c(1, 1), pch=20); palette('R3')
 # seed <- 1; set.seed(seed)
+seed <- .Random.seed
 source('FunctionsZI-PLN.R')
 library(PLNmodels)
 
@@ -35,35 +36,49 @@ iterMax <- 1e3; tol <- 1e-4
 elboPath <- rep(NA, iterMax)
 diff <- 2*tol; iter <- 1
 elboPath[iter] <- ELBO(data=data, mStep=mStep, eStep=eStep)
-cat(iter, elboPath[iter], diff, '\n')
+cat(iter, ':', elboPath[iter], diff)
 while((iter < iterMax) & (diff > tol)){
   iter <- iter+1
-  Mold <- eStep$M; Cold <- mStep$C
-  mStep <- Mstep(data=data, mStep=mStep, eStep=eStep)
-  # mStep$gamma <- true$gamma; mStep$beta <- true$beta; # mStep$C <- true$C
-  # mStep <- list(gamma=true$gamma, beta=true$beta, C=true$C)
-  eStep <- VEstep(data=data, mStep=mStep, eStep=eStep)
-  # eStep <- list(xi=true$xi, M=true$M, S=true$S)
-  # eStep$xi <- true$xi; eStep$M <- true$M; eStep$S <- true$S
-  elboPath[iter] <- ELBO(data=data, mStep=mStep, eStep=eStep)
-  cat(iter, 'E', elboPath[iter], diff, '\n')
-  diffM <- max(abs(eStep$M - Mold)); Mold <- eStep$M
-  diffC <- max(abs(mStep$C - Cold)); Cold <- mStep$C
-  diff <- max(diffM, diffC)
+  mStepNew <- Mstep(data=data, mStep=mStep, eStep=eStep)
+  eStepNew <- VEstep(data=data, mStep=mStepNew, eStep=eStep)
+  elboPath[iter] <- ELBO(data=data, mStep=mStepNew, eStep=eStepNew)
+  if(elboPath[iter] < elboPath[iter-1]){
+    cat(iter, ':', 'E-1', ELBO(data=data, mStep=mStep, eStep=eStep), 
+            'M', ELBO(data=data, mStep=mStepNew, eStep=eStep), 
+            'E', ELBO(data=data, mStep=mStepNew, eStep=eStepNew), '\n')
+  }
+  diff <- max(max(abs(eStepNew$M - eStep$M)), max(abs(mStepNew$C - mStep$C)))
+  mStep <- mStepNew; eStep <- eStepNew
   if(iter%%round(sqrt(iterMax))==0){
-    plot(elboPath[1:iter], type='b', ylim=quantile(elboPath[1:iter], probs=c(0.1, 1), na.rm=TRUE))
+    plot(elboPath[1:iter], type='b', xlab='iter', ylim=quantile(elboPath[1:iter], probs=c(0.1, 1), na.rm=TRUE))
+    cat(' /', iter, ':', elboPath[iter], diff)
   }
 }
+cat('\n')
 elboPath <- elboPath[1:iter]
+pseudoCovW <- t(eStep$M)%*%eStep$M/n + diag(colMeans(eStep$S))
 
-par(mfrow=c(3, 3))
-plot(elboPath, type='b', ylim=quantile(elboPath, probs=c(0.1, 1)))
-plot(true$gamma, mStep$gamma); abline(a=0, b=1, h=0, v=0)
+par(mfrow=c(3, 3), pch=20, cex=0.75)
+plot(elboPath, type='b', xlab='iter', ylim=quantile(elboPath, probs=c(0.1, 1)))
+plot(true$gamma, mStep$gamma, ylim=range(c(mStep$gamma, oracle$mStep$gamma))); abline(a=0, b=1, h=0, v=0)
 points(true$gamma, oracle$mStep$gamma, col=2)
+points(true$gamma, init$mStep$gamma, col=4)
+boxplot(eStep$xi ~ true$U)
 plot(true$beta, mStep$beta); abline(a=0, b=1, h=0, v=0)
 points(true$beta, oracle$mStep$beta, col=2)
-plot(true$C%*%t(true$C), mStep$C%*%t(mStep$C)); abline(a=0, b=1, h=0, v=0)
-plot(true$C%*%t(true$C), oracle$mStep$C%*%t(oracle$mStep$C), col=2); abline(a=0, b=1, h=0, v=0)
-plot(true$W, eStep$M); abline(a=0, b=1, h=0, v=0)
+points(true$beta, init$mStep$beta, col=4)
+plot(true$C%*%t(true$C), mStep$C%*%t(mStep$C), ylim=range(cbind(mStep$C%*%t(mStep$C), oracle$mStep$C%*%t(oracle$mStep$C)))); abline(a=0, b=1, h=0, v=0)
+points(true$C%*%t(true$C), mStep$C%*%pseudoCovW%*%t(mStep$C), col=3)
+points(true$C%*%t(true$C), oracle$mStep$C%*%t(oracle$mStep$C), col=2);
+points(true$C%*%t(true$C), init$mStep$C%*%t(init$mStep$C), col=4);
+# plot(true$W, eStep$M); abline(a=0, b=1, h=0, v=0)
 plot(true$Z, eStep$M%*%t(mStep$C)); abline(a=0, b=1, h=0, v=0)
+plot(1+data$Y, 1+eStep$xi*NuMuA(data=data, mStep=mStep, eStep=eStep)$A, log='xy', xlab='Y', ylab='pred'); abline(a=0, b=1, h=0, v=0)
+
+print(c(sum(diff(elboPath) < 0), 
+        mean(diff(elboPath)[which(diff(elboPath) < 0)][-1]), 
+        min(diff(elboPath))))
+
 lm(as.vector(mStep$C%*%t(mStep$C)) ~ -1 + as.vector(true$C%*%t(true$C)))$coef
+pseudoCovW
+cov2cor(pseudoCovW)
