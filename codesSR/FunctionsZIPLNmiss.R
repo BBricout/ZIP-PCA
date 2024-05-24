@@ -23,7 +23,7 @@ SimZiPLN <- function(n, p, d, q, obs=0.9, beta0=2){
   # Missing
   Omega <- matrix(rbinom(n*p, 1, obs), n, p)
   Y <- Ytrue * Omega
-  return(list(X=X, Y=Y, Omega=Omega, ij=ij, U=U, W=W, Z=Z, Yall=Yall, Ytrue=Ytrue, gamma=gamma, beta=beta, gamma=gamma, C=C))
+  return(list(X=X, Y=Y, Omega=Omega, ij=ij, U=U, W=W, Z=Z, Yall=Yall, Ytrue=Ytrue, gamma=gamma, beta=beta, C=C))
 }
 NuMuA <- function(data, mStep, eStep){
   nu <- matrix(data$X%*%mStep$gamma, n, p)
@@ -113,7 +113,8 @@ VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-4){
     eStep$xi <- xi
   }
   M <- t(sapply(1:n, function(i){
-    datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], logFactYi=data$logFactY[i, ])
+    datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], 
+                  Omegai=data$Omega[i, ], logFactYi=data$logFactY[i, ])
     eStepi <- list(xii=eStep$xi[i, ], mi=NULL, Si=eStep$S[i, ])
     optim(par=eStep$M[i, ], fn=ElboMi, gr=ElboGradMi, 
           datai=datai, mStep=mStep, eStepi=eStepi, 
@@ -124,7 +125,8 @@ VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-4){
     eStep$M <- M
   }
   S <- t(sapply(1:n, function(i){
-    datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], logFactYi=data$logFactY[i, ])
+    datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], 
+                  Omegai=data$Omega[i, ], logFactYi=data$logFactY[i, ])
     eStepi <- list(xii=eStep$xi[i, ], mi=eStep$M[i, ], Si=eStep$S[i, ])
     optim(par=eStepi$Si, fn=ElboSi, gr=ElboGradSi, 
           datai=datai, mStep=mStep, eStepi=eStepi, 
@@ -146,7 +148,7 @@ ElboGamma <- function(gamma, data, mStep, eStep){
 ElboGradGamma <- function(gamma, data, mStep, eStep){
   nu <- matrix(data$X%*%gamma, nrow(data$Y), ncol(data$Y))
   probU <- plogis(nu)
-  as.vector(t(data$X)%*%as.vector(eStep$xi*(eStep$xi - probU)))
+  as.vector(t(data$X)%*%as.vector(eStep$xi - probU))
 }
 ElboBeta <- function(beta, data, mStep, eStep){
   mStep$beta <- beta
