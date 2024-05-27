@@ -10,13 +10,15 @@ simDir <- '../simulSR/'
 
 # Parms: many small sims
 n <- 100; d <- 5; p <- 10; q <- 2
+baseSimName <- 'ZiPLNsim'; baseFitName <- 'ZiPLNfit'; 
+baseSimName <- 'ZiPLNsim-sameX'; baseFitName <- 'ZiPLNfit-sameX'; 
 seedList <- 1:10; seedNb <- length(seedList)
 obsList <- c(1, 0.99, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5); obsNb <- length(obsList)
 
-# Parms: one big sim
-n <- 500; d <- 20; p <- 30; q <- 5
-seedList <- 1; seedNb <- length(seedList)
-obsList <- c(0.6); obsNb <- length(obsList)
+# # Parms: one big sim
+# n <- 500; d <- 20; p <- 30; q <- 5
+# seedList <- 1; seedNb <- length(seedList)
+# obsList <- c(0.6); obsNb <- length(obsList)
 
 # Loop over sims
 for(seed in seedList){
@@ -25,11 +27,11 @@ for(seed in seedList){
     # Data
     simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
     simParms <- paste0(simParmsFull, '-obs', 100*obs)
-    simName <- paste0('ZiPLNsim', simParms)
+    simName <- paste0(baseSimName, simParms)
     simFile <- paste0(simDir, simName, '.Rdata')
     load(simFile)
     # Fit
-    fitName <- paste0('ZiPLNfit', simParms)
+    fitName <- paste0(baseFitName, simParms)
     fitFile <- paste0(simDir, fitName, '.Rdata')
     if(!file.exists(fitFile)){
       print(simName)

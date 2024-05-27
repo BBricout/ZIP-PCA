@@ -1,5 +1,5 @@
-SimZiPLN <- function(n, p, d, q, beta0=2){
-  X <- matrix(rnorm(n*p*d), n*p, d); X[, 1] <- 1
+SimZiPLN <- function(n, p, d, q, beta0=2, X=NULL){
+  if(is.null(X)){X <- matrix(rnorm(n*p*d), n*p, d); X[, 1] <- 1}
   ij <- cbind(rep(1:n, p), rep(1:p, each=n))
   # presence
   gamma <- rnorm(d)/sqrt(d)

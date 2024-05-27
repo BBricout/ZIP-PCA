@@ -9,6 +9,7 @@ simDir <- '../simulSR/'
 
 # Parms: many small sims
 n <- 100; d <- 5; p <- 10; q <- 2
+baseSimName <- 'ZiPLNsim'
 seedList <- 1:10; seedNb <- length(seedList)
 obsList <- c(1, 0.99, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5); obsNb <- length(obsList)
 
@@ -17,14 +18,17 @@ obsList <- c(1, 0.99, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5); obsNb <- length(obsList)
 # seedList <- 1; seedNb <- length(seedList)
 # obsList <- c(0.6); obsNb <- length(obsList)
 
+# Same X for all
+X0 <- matrix(rnorm(n*p*d), n*p, d); X0[, 1] <- 1; baseSimName <- paste0(baseSimName, '-sameX')
+
 # Simul
 for(seed in 1:10){
   set.seed(seed)
   simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
-  simNameFull <- paste0('ZiPLNsim', simParmsFull)
+  simNameFull <- paste0(baseSimName, simParmsFull)
   simFileFull <- paste0(simDir, simNameFull, '-noMiss.Rdata')
   if(!file.exists(simFileFull)){
-    sim <- SimZiPLN(n=n, p=p, d=d, q=q)
+    sim <- SimZiPLN(n=n, p=p, d=d, q=q, X=X0)
     obsTresh <- matrix(runif(n*p), n, p)
     data <- list(X=sim$X, Y=sim$Y, obsTresh=obsTresh, ij=sim$ij, logFactY=lgamma(sim$Y+1))
     true <- list(mstep=list(gamma=sim$gamma, beta=sim$beta, C=sim$C), 
@@ -34,7 +38,7 @@ for(seed in 1:10){
     for(oo in 1:obsNb){
       obs <- obsList[oo]
       simParms <- paste0(simParmsFull, '-obs', 100*obs)
-      simName <- paste0('ZiPLNsim', simParms)
+      simName <- paste0(baseSimName, simParms)
       simFile <- paste0(simDir, simName, '.Rdata')
       Omega <- 1*(obsTresh <= obs)
       data <- list(X=sim$X, Y=sim$Y, Omega=Omega, ij=sim$ij, logFactY=lgamma(sim$Y+1))

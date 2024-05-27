@@ -10,6 +10,7 @@ exportFig <- TRUE
 
 # Parms
 n <- 100; d <- 5; p <- 10; q <- 2
+baseSimName <- 'ZiPLNsim'; baseFitName <- 'ZiPLNfit'; 
 seedList <- 1:10; seedNb <- length(seedList)
 obsList <- c(1, 0.99, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5); obsNb <- length(obsList)
 for(seed in seedList){
@@ -20,9 +21,9 @@ for(seed in seedList){
     simNameFull <- paste0('ZiPLNsim', simParmsFull)
     simFileFull <- paste0(simDir, simNameFull, '-noMiss.Rdata')
     simParms <- paste0(simParmsFull, '-obs', 100*obs)
-    simName <- paste0('ZiPLNsim', simParms)
+    simName <- paste0(baseSimName, simParms)
     simFile <- paste0(simDir, simName, '.Rdata')
-    fitName <- paste0('ZiPLNfit', simParms)
+    fitName <- paste0(baseFitName, simParms)
     fitFile <- paste0(simDir, fitName, '.Rdata')
     if(file.exists(fitFile)){
       load(simFileFull)
@@ -34,7 +35,6 @@ for(seed in seedList){
       # Truth
       elboTrue <- ELBO(data=data, mStep=true$mstep, eStep=true$eStep)
       elboInit <- ELBO(data=data, mStep=init$mStep, eStep=init$eStep)
-      # Results
       # Results
       if(exportFig){png(paste0(figDir, fitName, '.png'))}
       par(mfrow=c(3, 3), pch=20, cex=0.75)
