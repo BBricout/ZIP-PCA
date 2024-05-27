@@ -6,11 +6,12 @@ rm(list=ls()); par(mfrow=c(1, 1), pch=20); palette('R3')
 source('Functions/FunctionsZIPLNmiss.R')
 simDir <- '../simulSR/'
 figDir <- '../plotsSR/'
-exportFig <- TRUE
+exportFig <- FALSE
 
 # Parms
 n <- 100; d <- 5; p <- 10; q <- 2
 baseSimName <- 'ZiPLNsim'; baseFitName <- 'ZiPLNfit'; 
+baseSimName <- 'ZiPLNsim-sameX'; baseFitName <- 'ZiPLNfit-sameX'; 
 seedList <- 1:10; seedNb <- length(seedList)
 obsList <- c(1, 0.99, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5); obsNb <- length(obsList)
 for(seed in seedList){
