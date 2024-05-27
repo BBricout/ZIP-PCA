@@ -227,3 +227,32 @@ VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4){
   elboPath <- elboPath[1:iter]
   return(list(mStep=mStep, eStep=eStep, pred=pred, iter=iter, elboPath=elboPath, elbo=elboPath[iter]))
 }
+
+################################################################################
+# Prediction
+PredZiPLN <- function(data, fit){
+  n <- nrow(data$Y); p <- ncol(data$Y)
+  sigma <- fit$mStep$C %*% t(fit$mStep$C)
+  nuMuA <-NuMuA(data=data, mStep=fit$mStep, eStep=fit$eStep)
+  condNu <- margNu <- nuMuA$nu
+  condPi <- margPi <- plogis(nuMuA$nu)
+  margLambda <- exp(nuMuA$nu + rep(1, n)%o%diag(sigma)/2)
+  condLambda <- nuMuA$A
+  nuMuA <-NuMuA(data=data, mStep=fit$mStep, eStep=fit$eStep)
+  margEsp <- margPi*margLambda
+  margVar <- margEsp + margPi*(1-margPi)*margLambda^2
+  condEsp <- condPi*condLambda
+  condVar <- condEsp + condPi*(1-condPi)*condLambda^2
+  margCIl <- margCIu <- condCIl <- condCIu <- matrix(NA, n, p)
+  for(i in 1:n){for(j in 1:p){
+    margCIl[i, j] <- qzip(p=.025, psi=1-margPi[i, j], lambda=margPi[i, j])
+    margCIu[i, j] <- qzip(p=.975, psi=1-margPi[i, j], lambda=margPi[i, j])
+    condCIl[i, j] <- qzip(p=.025, psi=1-condPi[i, j], lambda=condPi[i, j])
+    condCIu[i, j] <- qzip(p=.975, psi=1-condPi[i, j], lambda=condPi[i, j])
+  }}
+  return(list(nuMuA=nuMuA,
+              marg=list(pi=margPi, lambda=margLambda,
+                        esp=margEsp, var=margVar, lCI=margCIl, uCI=margCIu), 
+              cond=list(pi=condPi, lambda=condLambda,
+                        esp=condEsp, var=condVar, lCI=condCIl, uCI=condCIu)))
+}

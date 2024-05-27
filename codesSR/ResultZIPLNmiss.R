@@ -4,6 +4,7 @@ rm(list=ls()); par(mfrow=c(1, 1), pch=20); palette('R3')
 
 # seed <- .Random.seed
 source('Functions/FunctionsZIPLNmiss.R')
+library('bizicount')
 simDir <- '../simulSR/'
 figDir <- '../plotsSR/'
 exportFig <- FALSE
@@ -11,11 +12,12 @@ exportFig <- FALSE
 # Parms
 n <- 100; d <- 5; p <- 10; q <- 2
 baseSimName <- 'ZiPLNsim'; baseFitName <- 'ZiPLNfit'; 
-baseSimName <- 'ZiPLNsim-sameX'; baseFitName <- 'ZiPLNfit-sameX'; 
+# baseSimName <- 'ZiPLNsim-sameX'; baseFitName <- 'ZiPLNfit-sameX'; 
 seedList <- 1:10; seedNb <- length(seedList)
 obsList <- c(1, 0.99, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5); obsNb <- length(obsList)
-for(seed in seedList){
-  for(oo in 1:obsNb){
+
+for(seed in seedList){ # seed <- 2
+  for(oo in 1:obsNb){ # oo <- 3
     obs <- obsList[[oo]]
     # Data
     simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
@@ -31,8 +33,9 @@ for(seed in seedList){
       true$latent$Yfull <- data$Y
       load(simFile)
       load(fitFile)
-      # Oracle
+      # Oracle & preds
       oracle <- OracleZiPLN(data=data, latent=true$latent)
+      # pred <- PredZiPLN(data=data, fit=vem)
       # Truth
       elboTrue <- ELBO(data=data, mStep=true$mstep, eStep=true$eStep)
       elboInit <- ELBO(data=data, mStep=init$mStep, eStep=init$eStep)
@@ -44,16 +47,16 @@ for(seed in seedList){
       text(0.6*vem$iter, mean(quantile(vem$elboPath, probs=c(0.1, 1))), label=round(elboTrue))
       text(0.8*vem$iter, mean(quantile(vem$elboPath, probs=c(0.1, 1))), label=round(elboInit))
       plot(true$mstep$gamma, vem$mStep$gamma, ylim=range(c(vem$mStep$gamma, oracle$mStep$gamma))); abline(a=0, b=1, h=0, v=0)
-      points(true$mstep$gamma, oracle$mStep$gamma, col=2)
-      points(true$mstep$gamma, init$mStep$gamma, col=8)
+      points(true$mstep$gamma, oracle$mStep$gamma, col=2, pch=21)
+      points(true$mstep$gamma, init$mStep$gamma, col=4, pch=21)
       boxplot(vem$eStep$xi ~ true$latent$U, col=2-data$Omega)
       hist(vem$eStep$xi, breaks=sqrt(n*p))
       plot(true$mstep$beta, vem$mStep$beta); abline(a=0, b=1, h=0, v=0)
-      points(true$mstep$beta, oracle$mStep$beta, col=2)
-      points(true$mstep$beta, init$mStep$beta, col=8)
+      points(true$mstep$beta, oracle$mStep$beta, col=2, pch=21)
+      points(true$mstep$beta, init$mStep$beta, col=4, pch=21)
       plot(true$mstep$C%*%t(true$mstep$C), vem$mStep$C%*%t(vem$mStep$C), ylim=range(cbind(vem$mStep$C%*%t(vem$mStep$C), oracle$mStep$C%*%t(oracle$mStep$C)))); abline(a=0, b=1, h=0, v=0)
-      points(true$mstep$C%*%t(true$mstep$C), oracle$mStep$C%*%t(oracle$mStep$C), col=2);
-      points(true$mstep$C%*%t(true$mstep$C), init$mStep$C%*%t(init$mStep$C), col=8);
+      points(true$mstep$C%*%t(true$mstep$C), oracle$mStep$C%*%t(oracle$mStep$C), col=2, pch=21);
+      points(true$mstep$C%*%t(true$mstep$C), init$mStep$C%*%t(init$mStep$C), col=4, pch=21);
       # plot(true$W, vem$eStep$M); abline(a=0, b=1, h=0, v=0)
       plot(true$latent$Z, vem$eStep$M%*%t(vem$mStep$C)); abline(a=0, b=1, h=0, v=0)
       plot(1+true$latent$Yfull, 1+vem$pred$Yhat, log='xy', xlab='Y', ylab='pred', col=2-data$Omega); abline(a=0, b=1, h=0, v=0)
