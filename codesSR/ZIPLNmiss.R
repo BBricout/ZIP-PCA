@@ -1,16 +1,16 @@
 # Sim and fit ZI-PLN
 
 rm(list=ls()); par(mfrow=c(1, 1), pch=20); palette('R3')
-seed <- 6; set.seed(seed)
+seed <- 1; set.seed(seed)
 # seed <- .Random.seed
 source('FunctionsZIP.R')
 source('FunctionsZIPLNmiss.R')
 simDir <- '../simulSR/'
 figDir <- '../plotsSR/'
-exportFig <- TRUE
+exportFig <- FALSE
 
 # Parms
-n <- 100; d <- 5; p <- 10; q <- 2; obs <- 0.9
+n <- 100; d <- 5; p <- 10; q <- 2; obs <- 1
 
 # Simul
 simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
@@ -30,13 +30,13 @@ true <- list(gamma=sim$gamma, beta=sim$beta, C=sim$C,
              M=sim$W, S=matrix(1e-4, n, q), xi=matrix(plogis(sim$X%*%sim$gamma), n, p))
 c(sum(diag(cov(matrix(sim$X%*%sim$beta, n, p)))), sum(diag(cov(sim$Z))))
 
-# # First iterations
-# init <- InitZiPLN(data)
-# ELBO(data=data, mStep=init$mStep, eStep=init$eStep)
-# mStep <- Mstep(data=data, mStep=init$mStep, eStep=init$eStep)
-# ELBO(data=data, mStep=mStep, eStep=init$eStep)
-# eStep <- VEstep(data=data, mStep=mStep, eStep=init$eStep)
-# ELBO(data=data, mStep=mStep, eStep=eStep)
+# First iterations
+init <- InitZiPLN(data)
+ELBO(data=data, mStep=init$mStep, eStep=init$eStep)
+mStep <- Mstep(data=data, mStep=init$mStep, eStep=init$eStep)
+ELBO(data=data, mStep=mStep, eStep=init$eStep)
+eStep <- VEstep(data=data, mStep=mStep, eStep=init$eStep)
+ELBO(data=data, mStep=mStep, eStep=eStep)
 
 # Fit
 fitName <- paste0('ZiPLNfit', simParms)

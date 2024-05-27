@@ -97,6 +97,17 @@ ElboGradSi <- function(Si, datai, mStep, eStepi){
   Ai <- exp(mui + eStepi$mi%*%t(mStep$C) + 0.5*diag(mStep$C%*%diag(Si)%*%t(mStep$C)))
   as.vector(0.5*(1/Si - 1 - (datai$Omegai*eStepi$xii*Ai)%*%(mStep$C^2)))
 }
+ElboMiSi <- function(miSi, datai, mStep, eStepi){
+  q <- length(eStepi$mi)
+  eStepi$mi <- miSi[1:q]; eStepi$Si <- miSi[q+(1:q)]
+  ELBOi(datai=datai, mStep=mStep, eStepi=eStepi)
+}
+ElboGradMiSi <- function(miSi, datai, mStep, eStepi){
+  q <- length(eStepi$mi)
+  mi <- eStepi$mi <- miSi[1:q]; Si <- eStepi$Si <- miSi[q+(1:q)]
+  c(ElboGradMi(mi, datai, mStep, eStepi), ElboGradSi(Si, datai, mStep, eStepi))
+}
+
 
 VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-4){
   n <- nrow(data$Y); p <- ncol(data$Y); d <- ncol(data$X); q <- ncol(eStep$M)
@@ -109,29 +120,41 @@ VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-4){
   if(ELBO(data=data, mStep=mStep, eStep=eStepTmp) > ELBO(data=data, mStep=mStep, eStep=eStep)){
     eStep$xi <- xi
   }
-  M <- t(sapply(1:n, function(i){
-    datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], 
-                  Omegai=data$Omega[i, ], logFactYi=data$logFactY[i, ])
-    eStepi <- list(xii=eStep$xi[i, ], mi=NULL, Si=eStep$S[i, ])
-    optim(par=eStep$M[i, ], fn=ElboMi, gr=ElboGradMi, 
-          datai=datai, mStep=mStep, eStepi=eStepi, 
-          method='BFGS', control=list(fnscale=-1))$par
-  }))
-  eStepTmp <- list(xi=eStep$xi, M=M, S=eStep$S)
-  if(ELBO(data=data, mStep=mStep, eStep=eStepTmp) > ELBO(data=data, mStep=mStep, eStep=eStep)){
-    eStep$M <- M
-  }
-  S <- t(sapply(1:n, function(i){
+  # M <- t(sapply(1:n, function(i){
+  #   datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], 
+  #                 Omegai=data$Omega[i, ], logFactYi=data$logFactY[i, ])
+  #   eStepi <- list(xii=eStep$xi[i, ], mi=NULL, Si=eStep$S[i, ])
+  #   optim(par=eStep$M[i, ], fn=ElboMi, gr=ElboGradMi, 
+  #         datai=datai, mStep=mStep, eStepi=eStepi, 
+  #         method='BFGS', control=list(fnscale=-1))$par
+  # }))
+  # eStepTmp <- list(xi=eStep$xi, M=M, S=eStep$S)
+  # if(ELBO(data=data, mStep=mStep, eStep=eStepTmp) > ELBO(data=data, mStep=mStep, eStep=eStep)){
+  #   eStep$M <- M
+  # }
+  # S <- t(sapply(1:n, function(i){
+  #   datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], 
+  #                 Omegai=data$Omega[i, ], logFactYi=data$logFactY[i, ])
+  #   eStepi <- list(xii=eStep$xi[i, ], mi=eStep$M[i, ], Si=eStep$S[i, ])
+  #   optim(par=eStepi$Si, fn=ElboSi, gr=ElboGradSi, 
+  #         datai=datai, mStep=mStep, eStepi=eStepi, 
+  #         method='L-BFGS-B', control=list(fnscale=-1), lower=rep(tolS, q))$par
+  # }))
+  # eStepTmp <- list(xi=eStep$xi, M=eStep$M, S=S)
+  # if(ELBO(data=data, mStep=mStep, eStep=eStepTmp) > ELBO(data=data, mStep=mStep, eStep=eStep)){
+  #   eStep$S <- S
+  # }
+  MS <- t(sapply(1:n, function(i){
     datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], 
                   Omegai=data$Omega[i, ], logFactYi=data$logFactY[i, ])
     eStepi <- list(xii=eStep$xi[i, ], mi=eStep$M[i, ], Si=eStep$S[i, ])
-    optim(par=eStepi$Si, fn=ElboSi, gr=ElboGradSi, 
+    optim(par=c(eStep$M[i, ], eStep$S[i, ]), fn=ElboMiSi, gr=ElboGradMiSi, 
           datai=datai, mStep=mStep, eStepi=eStepi, 
-          method='L-BFGS-B', control=list(fnscale=-1), lower=rep(tolS, q))$par
+          method='L-BFGS-B', control=list(fnscale=-1), lower=c(rep(-Inf, q), rep(tolS, q)))$par
   }))
-  eStepTmp <- list(xi=eStep$xi, M=eStep$M, S=S)
+  eStepTmp <- list(xi=eStep$xi, M=MS[, 1:q], S=MS[, q+(1:q)])
   if(ELBO(data=data, mStep=mStep, eStep=eStepTmp) > ELBO(data=data, mStep=mStep, eStep=eStep)){
-    eStep$S <- S
+    eStep$M <- MS[, 1:q]; eStep$S <- MS[, q+(1:q)]
   }
   return(eStep)
 }
