@@ -6,7 +6,7 @@ rm(list=ls()); par(mfrow=c(1, 1), pch=20); palette('R3')
 source('Functions/FunctionsZIPLNmiss.R')
 simDir <- '../simulSR/'
 figDir <- '../plotsSR/'
-exportFig <- FALSE
+exportFig <- TRUE
 
 # Parms
 n <- 100; d <- 5; p <- 10; q <- 2
@@ -26,6 +26,7 @@ for(seed in seedList){
     fitFile <- paste0(simDir, fitName, '.Rdata')
     if(file.exists(fitFile)){
       load(simFileFull)
+      true$latent$Yfull <- data$Y
       load(simFile)
       load(fitFile)
       # Oracle
@@ -53,9 +54,9 @@ for(seed in seedList){
       points(true$mstep$C%*%t(true$mstep$C), oracle$mStep$C%*%t(oracle$mStep$C), col=2);
       points(true$mstep$C%*%t(true$mstep$C), init$mStep$C%*%t(init$mStep$C), col=8);
       # plot(true$W, vem$eStep$M); abline(a=0, b=1, h=0, v=0)
-      plot(true$mstep$Z, vem$eStep$M%*%t(vem$mStep$C)); abline(a=0, b=1, h=0, v=0)
-      plot(1+latent$Yfull, 1+vem$pred$Yhat, log='xy', xlab='Y', ylab='pred', col=2-data$Omega); abline(a=0, b=1, h=0, v=0)
-      points(1+latent$Yfull[which(data$Omega==0)], 1+vem$pred$Yhat[which(data$Omega==0)], col=2)
+      plot(true$latent$Z, vem$eStep$M%*%t(vem$mStep$C)); abline(a=0, b=1, h=0, v=0)
+      plot(1+true$latent$Yfull, 1+vem$pred$Yhat, log='xy', xlab='Y', ylab='pred', col=2-data$Omega); abline(a=0, b=1, h=0, v=0)
+      points(1+true$latent$Yfull[which(data$Omega==0)], 1+vem$pred$Yhat[which(data$Omega==0)], col=2)
       if(exportFig){dev.off()}
       
       lm(as.vector(vem$mStep$C%*%t(vem$mStep$C)) ~ -1 + as.vector(true$mstep$C%*%t(true$mstep$C)))$coef

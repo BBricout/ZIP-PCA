@@ -13,10 +13,10 @@ n <- 100; d <- 5; p <- 10; q <- 2
 seedList <- 1:10; seedNb <- length(seedList)
 obsList <- c(1, 0.99, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5); obsNb <- length(obsList)
 
-# # Parms: one big sim
-# n <- 500; d <- 20; p <- 30; q <- 5
-# seedList <- 1; seedNb <- length(seedList)
-# obsList <- c(0.6); obsNb <- length(obsList)
+# Parms: one big sim
+n <- 500; d <- 20; p <- 30; q <- 5
+seedList <- 1; seedNb <- length(seedList)
+obsList <- c(0.6); obsNb <- length(obsList)
 
 # Loop over sims
 for(seed in seedList){
