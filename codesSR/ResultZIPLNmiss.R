@@ -7,7 +7,7 @@ source('FunctionsZIP.R')
 source('FunctionsZIPLNmiss.R')
 simDir <- '../simulSR/'
 figDir <- '../plotsSR/'
-exportFig <- FALSE
+exportFig <- TRUE
 
 # Parms
 n <- 100; d <- 5; p <- 10; q <- 2
