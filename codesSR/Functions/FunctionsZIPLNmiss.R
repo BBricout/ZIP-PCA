@@ -2,12 +2,6 @@
 
 ################################################################################
 # Simul
-SimZiPLNmiss <- function(sim, obs=1){
-  sim$Omega <- matrix(rbinom(prod(dim(sim$Y)), 1, obs), nrow(sim$Y), ncol(sim$Y))
-  sim$Yfull <- sim$Y
-  sim$Y <- sim$Y * sim$Omega
-  return(sim)
-}
 NuMuA <- function(data, mStep, eStep){
   nu <- matrix(data$X%*%mStep$gamma, n, p)
   mu <- matrix(data$X%*%mStep$beta, n, p)
@@ -42,12 +36,12 @@ InitZiPLN <- function(data){
   eStep <- list(xi=matrix(sum(data$Omega*(data$Y > 0))/sum(data$Omega), n, p), M=matrix(0, n, q), S=matrix(1e-4, n, q))
   return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca))
 }
-OracleZiPLN <- function(sim){
-  pca <- prcomp(sim$Z, rank=ncol(sim$W))
-  mStep <- list(gamma=as.vector(glm(as.vector(sim$U) ~ -1 + sim$X, family='binomial')$coef), 
-                beta=as.vector(glm(as.vector(sim$Yall) ~ -1 + sim$X + offset(as.vector(sim$Z)), 
+OracleZiPLN <- function(data, latent){
+  pca <- prcomp(latent$Z, rank=ncol(latent$W))
+  mStep <- list(gamma=as.vector(glm(as.vector(latent$U) ~ -1 + data$X, family='binomial')$coef), 
+                beta=as.vector(glm(as.vector(latent$Yall) ~ -1 + data$X + offset(as.vector(latent$Z)), 
                                    family='poisson')$coef), 
-                C=pca$rotation%*%diag(pca$sdev[1:ncol(sim$W)]))
+                C=pca$rotation%*%diag(pca$sdev[1:ncol(latent$W)]))
   eStep <- NULL
   return(list(mStep=mStep, eStep=eStep, pca=pca))
 }

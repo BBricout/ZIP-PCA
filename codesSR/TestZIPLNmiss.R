@@ -10,7 +10,7 @@ figDir <- '../plotsSR/'
 exportFig <- FALSE
 
 # Parms
-n <- 100; d <- 5; p <- 10; q <- 2; obs <- 1
+n <- 500; d <- 20; p <- 30; q <- 2; obs <- 0.6
 
 # Simul
 simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
@@ -25,12 +25,13 @@ if(!file.exists(simFile)){
   save(sim, file=simFile)
 }else{load(simFile)}
 data <- list(X=sim$X, Y=sim$Y, Omega=sim$Omega, ij=sim$ij, logFactY=lgamma(sim$Y+1))
-true <- list(gamma=sim$gamma, beta=sim$beta, C=sim$C, 
-             U=sim$U, W=sim$W, Z=sim$Z,
-             M=sim$W, S=matrix(1e-4, n, q), xi=matrix(plogis(sim$X%*%sim$gamma), n, p))
+true <- list(mstep=list(gamma=sim$gamma, beta=sim$beta, C=sim$C), 
+             eStep=list(M=sim$W, S=matrix(1e-4, n, q), xi=matrix(plogis(sim$X%*%sim$gamma), n, p)), 
+             latent=list(U=sim$U, W=sim$W, Z=sim$Z)             )
 c(sum(diag(cov(matrix(sim$X%*%sim$beta, n, p)))), sum(diag(cov(sim$Z))))
 
 # First iterations
+ELBO(data=data, mStep=true, eStep=true)
 init <- InitZiPLN(data)
 ELBO(data=data, mStep=init$mStep, eStep=init$eStep)
 mStep <- Mstep(data=data, mStep=init$mStep, eStep=init$eStep)
@@ -46,7 +47,7 @@ if(!file.exists(fitFile)){
   oracle <- OracleZiPLN(sim)
   init <- InitZiPLN(data)
   vem <- VemZiPLN(data, init=init)
-  save(oracle, init, vem, file=fitFile)
+  # save(oracle, init, vem, file=fitFile)
 }else{load(fitFile)}
 
 # Results
@@ -73,3 +74,7 @@ if(exportFig){dev.off()}
 lm(as.vector(vem$mStep$C%*%t(vem$mStep$C)) ~ -1 + as.vector(true$C%*%t(true$C)))$coef
 pseudoCovW <- t(vem$eStep$M)%*%vem$eStep$M/n + diag(colMeans(vem$eStep$S))
 pseudoCovW
+
+c(ELBO(data=data, mStep=true$mstep, eStep=true$eStep), 
+  ELBO(data=data, mStep=init$mStep, eStep=true$eStep),
+  ELBO(data=data, mStep=vem$mStep, eStep=vem$eStep))

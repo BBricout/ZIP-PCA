@@ -3,39 +3,42 @@
 rm(list=ls()); par(mfrow=c(1, 1), pch=20); palette('R3')
 
 # seed <- .Random.seed
-source('FunctionsZIP.R')
-source('FunctionsZIPLNmiss.R')
+source('Functions/FunctionsUtils.R')
+source('Functions/FunctionsZIPLNmiss.R')
 simDir <- '../simulSR/'
 
-# Parms
+# Parms: many small sims
 n <- 100; d <- 5; p <- 10; q <- 2
 seedList <- 1:10; seedNb <- length(seedList)
 obsList <- c(1, 0.99, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5); obsNb <- length(obsList)
-for(seed in seedList){
-  for(oo in 1:obsNb){
-    obs <- obsList[[oo]]; set.seed(seed)
-    # Data
-    simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
-    simNameFull <- paste0('ZiPLNsim', simParmsFull)
-    simFileFull <- paste0(simDir, simNameFull, '.Rdata')
-    load(simFileFull)
-    simParms <- paste0(simParmsFull, '-obs', 100*obs)
-    simName <- paste0('ZiPLNsim', simParms)
-    simFile <- paste0(simDir, simName, '.Rdata')
-    if(!file.exists(simFile)){
-      sim <- SimZiPLNmiss(sim=sim, obs=obs)
-      save(sim, file=simFile)
-    }else{load(simFile)}
-    data <- list(X=sim$X, Y=sim$Y, Omega=sim$Omega, ij=sim$ij, logFactY=lgamma(sim$Y+1))
-    # Fit
-    fitName <- paste0('ZiPLNfit', simParms)
-    fitFile <- paste0(simDir, fitName, '.Rdata')
-    if(!file.exists(fitFile)){
-      print(simName)
-      oracle <- OracleZiPLN(sim)
-      init <- InitZiPLN(data)
-      vem <- VemZiPLN(data, init=init)
-      save(oracle, init, vem, file=fitFile)
+
+# Parms: one big sim
+n <- 500; d <- 20; p <- 30; q <- 5
+seedList <- 1; seedNb <- length(seedList)
+obsList <- c(0.6); obsNb <- length(obsList)
+
+# Simul
+for(seed in 1:10){
+  set.seed(seed)
+  simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
+  simNameFull <- paste0('ZiPLNsim', simParmsFull)
+  simFileFull <- paste0(simDir, simNameFull, '-noMiss.Rdata')
+  if(!file.exists(simFileFull)){
+    sim <- SimZiPLN(n=n, p=p, d=d, q=q)
+    obsTresh <- matrix(runif(n*p), n, p)
+    data <- list(X=sim$X, Y=sim$Y, obsTresh=obsTresh, ij=sim$ij, logFactY=lgamma(sim$Y+1))
+    true <- list(mstep=list(gamma=sim$gamma, beta=sim$beta, C=sim$C), 
+                 eStep=list(M=sim$W, S=matrix(1e-4, n, q), xi=matrix(plogis(sim$X%*%sim$gamma), n, p)), 
+                 latent=list(U=sim$U, W=sim$W, Z=sim$Z, Yall=sim$Yall, Yfull=sim$Yfull))
+    save(data, true, file=simFileFull)
+    for(oo in 1:obsNb){
+      obs <- obsList[oo]
+      simParms <- paste0(simParmsFull, '-obs', 100*obs)
+      simName <- paste0('ZiPLNsim', simParms)
+      simFile <- paste0(simDir, simName, '.Rdata')
+      Omega <- 1*(obsTresh <= obs)
+      data <- list(X=sim$X, Y=sim$Y, Omega=Omega, ij=sim$ij, logFactY=lgamma(sim$Y+1))
+      save(data, file=simFile)
     }
   }
 }
