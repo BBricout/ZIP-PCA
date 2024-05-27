@@ -7,12 +7,12 @@ source('Functions/FunctionsZIPLNmiss.R')
 library('bizicount')
 simDir <- '../simulSR/'
 figDir <- '../plotsSR/'
-exportFig <- FALSE
+exportFig <- TRUE
 
 # Parms
 n <- 100; d <- 5; p <- 10; q <- 2
 baseSimName <- 'ZiPLNsim'; baseFitName <- 'ZiPLNfit'; 
-# baseSimName <- 'ZiPLNsim-sameX'; baseFitName <- 'ZiPLNfit-sameX'; 
+baseSimName <- 'ZiPLNsim-sameX'; baseFitName <- 'ZiPLNfit-sameX'; 
 seedList <- 1:10; seedNb <- length(seedList)
 obsList <- c(1, 0.99, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5); obsNb <- length(obsList)
 
@@ -21,7 +21,7 @@ for(seed in seedList){ # seed <- 2
     obs <- obsList[[oo]]
     # Data
     simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
-    simNameFull <- paste0('ZiPLNsim', simParmsFull)
+    simNameFull <- paste0(baseSimName, simParmsFull)
     simFileFull <- paste0(simDir, simNameFull, '-noMiss.Rdata')
     simParms <- paste0(simParmsFull, '-obs', 100*obs)
     simName <- paste0(baseSimName, simParms)
