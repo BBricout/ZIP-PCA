@@ -33,7 +33,11 @@ InitZiPLN <- function(data){
   zip <- EmZIP(X=data$X[pres, ], Y=as.vector(data$Y)[pres])
   mStep <- list(gamma=zip$gamma, beta=zip$beta, 
                 C=pca$rotation %*% diag(pca$sdev[1:q]))
-  eStep <- list(xi=matrix(sum(data$Omega*(data$Y > 0))/sum(data$Omega), n, p), M=matrix(0, n, q), S=matrix(1e-4, n, q))
+  # eStep <- list(xi=matrix(sum(data$Omega*(data$Y > 0))/sum(data$Omega), n, p), 
+                # M=matrix(0, n, q), S=matrix(1e-4, n, q))
+  xi <- matrix(plogis(data$X%*%mStep$gamma), n, p)
+  xi[which(data$Y > 0)] <- 1
+  eStep <- list(xi=xi, M=matrix(0, n, q), S=matrix(1e-4, n, q))
   return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca))
 }
 OracleZiPLN <- function(data, latent){
@@ -217,7 +221,8 @@ VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4){
     diff <- max(max(abs(eStepNew$M - eStep$M)), max(abs(mStepNew$C - mStep$C)))
     mStep <- mStepNew; eStep <- eStepNew
     if(iter%%round(sqrt(iterMax))==0){
-      plot(elboPath[1:iter], type='b', xlab='iter', ylim=quantile(elboPath[1:iter], probs=c(0.1, 1), na.rm=TRUE))
+      plot(elboPath[1:iter], type='b', xlab='iter', ylab='elbo', 
+           ylim=quantile(elboPath[1:iter], probs=c(0.1, 1), na.rm=TRUE))
       cat(' /', iter, ':', elboPath[iter], diff)
     }#else{cat('', iter)}
   }

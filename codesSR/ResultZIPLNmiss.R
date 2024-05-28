@@ -12,7 +12,7 @@ exportFig <- TRUE
 # Parms
 n <- 100; d <- 5; p <- 10; q <- 2
 baseSimName <- 'ZiPLNsim'; baseFitName <- 'ZiPLNfit'; 
-baseSimName <- 'ZiPLNsim-sameX'; baseFitName <- 'ZiPLNfit-sameX'; 
+baseSimName <- 'ZiPLNsim-sameX'; baseFitName <- 'ZiPLNfit-sameX';
 seedList <- 1:10; seedNb <- length(seedList)
 obsList <- c(1, 0.99, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5); obsNb <- length(obsList)
 
@@ -29,6 +29,7 @@ for(seed in seedList){ # seed <- 2
     fitName <- paste0(baseFitName, simParms)
     fitFile <- paste0(simDir, fitName, '.Rdata')
     if(file.exists(fitFile)){
+      print(fitName)
       load(simFileFull)
       true$latent$Yfull <- data$Y
       load(simFile)

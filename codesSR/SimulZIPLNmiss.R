@@ -18,8 +18,10 @@ obsList <- c(1, 0.99, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5); obsNb <- length(obsList)
 # seedList <- 1; seedNb <- length(seedList)
 # obsList <- c(0.6); obsNb <- length(obsList)
 
-# Same X for all
-X0 <- matrix(rnorm(n*p*d), n*p, d); X0[, 1] <- 1; baseSimName <- paste0(baseSimName, '-sameX')
+X0 <- NULL
+# # Same X for all
+# seedX <- 1; set.seed(seedX)
+# X0 <- matrix(rnorm(n*p*d), n*p, d); X0[, 1] <- 1; baseSimName <- paste0(baseSimName, '-sameX', seedX)
 
 # Simul
 for(seed in 1:10){
