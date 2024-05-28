@@ -1,7 +1,7 @@
 # Functions ZI-PLN
 
 ################################################################################
-# Simul
+# Utils
 NuMuA <- function(data, mStep, eStep){
   nu <- matrix(data$X%*%mStep$gamma, n, p)
   mu <- matrix(data$X%*%mStep$beta, n, p)

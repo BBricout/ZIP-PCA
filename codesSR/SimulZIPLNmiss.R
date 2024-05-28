@@ -33,7 +33,7 @@ for(seed in 1:10){
     sim <- SimZiPLN(n=n, p=p, d=d, q=q, X=X0)
     obsTresh <- matrix(runif(n*p), n, p)
     data <- list(X=sim$X, Y=sim$Y, obsTresh=obsTresh, ij=sim$ij, logFactY=lgamma(sim$Y+1))
-    true <- list(mstep=list(gamma=sim$gamma, beta=sim$beta, C=sim$C), 
+    true <- list(mStep=list(gamma=sim$gamma, beta=sim$beta, C=sim$C), 
                  eStep=list(M=sim$W, S=matrix(1e-4, n, q), xi=matrix(plogis(sim$X%*%sim$gamma), n, p)), 
                  latent=list(U=sim$U, W=sim$W, Z=sim$Z, Yall=sim$Yall))
     save(data, true, file=simFileFull)
