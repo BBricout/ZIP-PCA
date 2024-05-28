@@ -7,7 +7,7 @@ source('Functions/FunctionsZIPLNmiss.R')
 library('bizicount')
 simDir <- '../simulSR/'
 figDir <- '../plotsSR/'
-exportFig <- TRUE
+exportFig <- FALSE
 
 # Parms
 n <- 100; d <- 5; p <- 10; q <- 2
