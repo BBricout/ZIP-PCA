@@ -248,16 +248,21 @@ PredZiPLN <- function(data, fit){
   margVar <- margEsp + margPi*(1-margPi)*margLambda^2
   condEsp <- condPi*condLambda
   condVar <- condEsp + condPi*(1-condPi)*condLambda^2
-  margCIl <- margCIu <- condCIl <- condCIu <- matrix(NA, n, p)
+  margZipCIl <- margZipCIu <- condZipCIl <- condZipCIu <- 
+    margPoisCIl <- margPoisCIu <- condPoisCIl <- condPoisCIu <- matrix(NA, n, p)
   for(i in 1:n){for(j in 1:p){
-    margCIl[i, j] <- qzip(p=.025, psi=1-margPi[i, j], lambda=margPi[i, j])
-    margCIu[i, j] <- qzip(p=.975, psi=1-margPi[i, j], lambda=margPi[i, j])
-    condCIl[i, j] <- qzip(p=.025, psi=1-condPi[i, j], lambda=condPi[i, j])
-    condCIu[i, j] <- qzip(p=.975, psi=1-condPi[i, j], lambda=condPi[i, j])
+    margZipCIl[i, j] <- qzip(p=.025, psi=1-margPi[i, j], lambda=margLambda[i, j])
+    margZipCIu[i, j] <- qzip(p=.975, psi=1-margPi[i, j], lambda=margLambda[i, j])
+    margPoisCIl[i, j] <- qpois(p=.025, lambda=margLambda[i, j])
+    margPoisCIu[i, j] <- qpois(p=.975, lambda=margLambda[i, j])
+    condZipCIl[i, j] <- qzip(p=.025, psi=1-condPi[i, j], lambda=condLambda[i, j])
+    condZipCIu[i, j] <- qzip(p=.975, psi=1-condPi[i, j], lambda=condLambda[i, j])
+    condPoisCIl[i, j] <- qpois(p=.025, lambda=condLambda[i, j])
+    condPoisCIu[i, j] <- qpois(p=.975, lambda=condLambda[i, j])
   }}
   return(list(nuMuA=nuMuA,
-              marg=list(pi=margPi, lambda=margLambda,
-                        esp=margEsp, var=margVar, lCI=margCIl, uCI=margCIu), 
-              cond=list(pi=condPi, lambda=condLambda,
-                        esp=condEsp, var=condVar, lCI=condCIl, uCI=condCIu)))
+              marg=list(pi=margPi, lambda=margLambda, esp=margEsp, var=margVar, 
+                        lZipCI=margZipCIl, uZipCI=margZipCIu, lPoisCI=margPoisCIl, uPoisCI=margPoisCIu), 
+              cond=list(pi=condPi, lambda=condLambda, esp=condEsp, var=condVar, 
+                        lZipCI=condZipCIl, uZipCI=condZipCIu), lPoisCI=condPoisCIl, uPoisCI=condPoisCIu))
 }
