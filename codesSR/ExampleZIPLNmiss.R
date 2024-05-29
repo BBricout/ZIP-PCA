@@ -11,7 +11,7 @@ qList <- 1:10; qNb <- length(qList)
 
 # Data
 dataName <- 'Souchet'
-dataName <- 'Colvert'
+# dataName <- 'Colvert'
 X <- as.matrix(read.csv(paste0(dataDir, dataName, '_covariate.csv'), sep=',', header=TRUE))
 Y <- as.matrix(read.csv(paste0(dataDir, dataName, '_count.csv'), sep=',', header=TRUE))
 X <- X[, -1]; site <- Y[, 1]; Y <- Y[, -1]
