@@ -103,9 +103,9 @@ ElboGradSi <- function(Si, datai, mStep, eStepi){
   mui <- as.vector(datai$Xi%*%mStep$beta)
   # Ai <- exp(mui + eStepi$mi%*%t(mStep$C) + 0.5*diag(mStep$C%*%diag(Si)%*%t(mStep$C)))
   if(length(Si)==1){
-    Ai <- exp(mui + as.vector(mStep$C%*%mi) + as.vector(0.5*eStepi$Si*mStep$C^2))
+    Ai <- exp(mui + as.vector(mStep$C%*%eStepi$mi) + as.vector(0.5*Si*mStep$C^2))
   }else{
-    Ai <- exp(mui + as.vector(mStep$C%*%mi) + 0.5*diag(mStep$C%*%diag(eStepi$Si)%*%t(mStep$C)))
+    Ai <- exp(mui + as.vector(mStep$C%*%eStepi$mi) + 0.5*diag(mStep$C%*%diag(Si)%*%t(mStep$C)))
   }
   as.vector(0.5*(1/Si - 1 - (datai$Omegai*eStepi$xii*Ai)%*%(mStep$C^2)))
 }
