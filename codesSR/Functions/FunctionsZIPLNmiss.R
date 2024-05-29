@@ -3,17 +3,16 @@
 ################################################################################
 # Utils
 NuMuA <- function(data, mStep, eStep){
-  n <- nrow(data$Y); p <- ncol(data$Y)
-  nu <- matrix(data$X%*%mStep$gamma, n, p)
-  mu <- matrix(data$X%*%mStep$beta, n, p)
+  nu <- matrix(data$X%*%mStep$gamma, nrow(data$Y), ncol(data$Y))
+  mu <- matrix(data$X%*%mStep$beta, nrow(data$Y), ncol(data$Y))
   A <- exp(mu + eStep$M%*%t(mStep$C) + 
-             0.5*t(sapply(1:n, function(i){diag(mStep$C%*%diag(eStep$S[i, ])%*%t(mStep$C))})))
+             0.5*t(sapply(1:nrow(data$Y), function(i){diag(mStep$C%*%diag(eStep$S[i, ])%*%t(mStep$C))})))
   return(list(nu=nu, mu=mu, A=A))
 }
 
 ################################################################################
 # Init
-InitZiPLNold <- function(data){
+InitZiPLNold <- function(data, q){
   pres <- which(data$Omega==1)
   reg <- lm(as.vector(log(1+data$Y)[pres]) ~ -1 + data$X[pres, ])
   res <- matrix(0, nrow(data$Y), ncol(data$Y))
@@ -25,7 +24,7 @@ InitZiPLNold <- function(data){
   eStep <- list(xi=matrix(sum(data$Omega*(data$Y > 0))/sum(data$Omega), n, p), M=matrix(0, n, q), S=matrix(1e-4, n, q))
   return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca))
 }
-InitZiPLN <- function(data){
+InitZiPLN <- function(data, q){
   pres <- which(data$Omega==1)
   reg <- lm(as.vector(log(1+data$Y))[pres] ~ -1 + data$X[pres, ])
   res <- matrix(0, nrow(data$Y), ncol(data$Y))
@@ -190,7 +189,7 @@ Mstep <- function(data, mStep, eStep){
   beta <- optim(par=mStep$beta, fn=ElboBeta, gr=ElboGradBeta, data=data, mStep=mStep, eStep=eStep, 
                 method='BFGS', control=list(fnscale=-1))$par
   mStep$beta <- beta
-  mu <- matrix(data$X%*%mStep$beta, n, p)
+  mu <- matrix(data$X%*%mStep$beta, nrow(data$Y), ncol(data$Y))
   vecC <- optim(par=as.vector(mStep$C), fn=ElboC, gr=ElboGradC, data=data, mStep=mStep, eStep=eStep, 
                 method='BFGS', control=list(fnscale=-1))$par
   mStep$C <- C <- matrix(vecC, ncol(data$Y), ncol(eStep$M))
@@ -227,7 +226,7 @@ VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4, p
       cat(' /', iter, ':', elboPath[iter], diff)
     }#else{cat('', iter)}
   }
-  cat('\n')
+  cat(' /', iter, ':', elboPath[iter], diff, '\n')
   pred <- NuMuA(data=data, mStep=mStep, eStep=eStep)
   pred$Yhat <- eStep$xi * pred$A
   elboPath <- elboPath[1:iter]
@@ -242,8 +241,9 @@ JackknifeZiPLN <- function(data, fit, iterMax=1e3){
   ij_1 <- cbind(rep(1:(n-1), p), rep(1:p, each=n-1))
   gammaMat <- betaMat <- matrix(NA, n, d)
   CMat <- matrix(NA, n, p*q)
+  xiMat <- matrix(NA, n, p); MMat <- SMat <- matrix(NA, n, q)
   par(mfrow=c(5, 5))
-  for(i in 1:n){
+  for(i in 1:n){ # i <- 1
     cat('i =', i, ': ')
     data_i <- list(X=data$X[-which(data$ij[, 1]==i), ], Y=data$Y[-i, ], Omega=data$Omega[-i, ],
                    ij=ij_1, logFactY=data$logFactY[-i, ])
@@ -253,12 +253,15 @@ JackknifeZiPLN <- function(data, fit, iterMax=1e3){
     plot(fit_iList[[i]]$elboPath, main=i, ylim=quantile(fit_iList[[i]]$elboPath, probs=c(0.1, 1)), xlab='', ylab='')
     gammaMat[i, ] <- fit_iList[[i]]$mStep$gamma; betaMat[i, ] <- fit_iList[[i]]$mStep$beta
     CMat[i, ] <- as.vector(fit_iList[[i]]$mStep$C)
+    eStep_i <- VEstep(data=data, mStep=fit_iList[[i]]$mStep, eStep=fit$eStep)
+    xiMat[i, ] <- eStep_i$xi[i, ]; MMat[i, ] <- eStep_i$M[i, ]; SMat[i, ] <- eStep_i$S[i, ]
   }
   jkCoef <- (n-1)^2/n
   return(list(fit_iList=fit_iList, 
-              parms_i=list(gamma=gammaMat, beta=betaMat, C=CMat),
+              mStepMat=list(gamma=gammaMat, beta=betaMat, C=CMat),
               cov=list(gamma=jkCoef*cov(gammaMat), beta=jkCoef*cov(betaMat), 
-                       C=jkCoef*cov(CMat), theta=jkCoef*cov(cbind(gammaMat, betaMat, CMat)))
+                       C=jkCoef*cov(CMat), theta=jkCoef*cov(cbind(gammaMat, betaMat, CMat))), 
+              eStep=list(xi=xiMat, M=MMat, S=SMat)
               ))
 }
 

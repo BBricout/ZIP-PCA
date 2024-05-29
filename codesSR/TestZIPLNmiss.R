@@ -28,7 +28,7 @@ c(sum(diag(cov(matrix(data$X%*%true$mstep$beta, n, p)))), sum(diag(cov(true$late
 
 # First iterations
 ELBO(data=data, mStep=true$mstep, eStep=true$eStep)
-init <- InitZiPLN(data)
+init <- InitZiPLN(data, q)
 ELBO(data=data, mStep=init$mStep, eStep=init$eStep)
 mStep <- Mstep(data=data, mStep=init$mStep, eStep=init$eStep)
 ELBO(data=data, mStep=mStep, eStep=init$eStep)
@@ -67,10 +67,31 @@ if(!file.exists(fitFile)){
 # points(1+true$latent$Yfull[which(data$Omega==0)], 1+vem$pred$Yhat[which(data$Omega==0)], col=2)
 # # if(exportFig){dev.off()}
 
+# Results
+lm(as.vector(vem$mStep$C%*%t(vem$mStep$C)) ~ -1 + as.vector(true$mstep$C%*%t(true$mstep$C)))$coef
+pseudoCovW <- t(vem$eStep$M)%*%vem$eStep$M/n + diag(colMeans(vem$eStep$S))
+pseudoCovW
+c(ELBO(data=data, mStep=true$mstep, eStep=true$eStep), 
+  ELBO(data=data, mStep=init$mStep, eStep=true$eStep),
+  ELBO(data=data, mStep=vem$mStep, eStep=vem$eStep))
+
 # Jackknife
-jk <- JackknifeZiPLN(data=data, fit=vem)
+covName <- paste0('ZiPLNcov', simParms)
+covFile <- paste0(simDir, fitName, '.Rdata')
+if(!file.exists(covFile)){
+  jk <- JackknifeZiPLN(data=data, fit=vem)
+  save(jk, file=covFile)
+}else{load(covFile)}
+
+par(mfrow=c(2, 2))
+plot(vem$eStep$xi, jk$eStep$xi); abline(a=0, b=1, h=0, v=0)
+plot(vem$eStep$M, jk$eStep$M); abline(a=0, b=1, h=0, v=0)
+plot(vem$eStep$S, jk$eStep$S); abline(a=0, b=1, h=0, v=0)
+
 vem$iter
 summary(sapply(1:n, function(i){jk$fit_iList[[i]]$iter}))
+vem$elbo
+hist(sapply(1:n, function(i){diff(range(jk$fit_iList[[i]]$elboPath))}), main='', xlab='', ylab='')
 
 rbind(true=true$mstep$gamma, vem=vem$mStep$gamma, sd=sqrt(diag(jk$cov$gamma)),
       stat=vem$mStep$gamma / sqrt(diag(jk$cov$gamma)), 
@@ -80,10 +101,4 @@ rbind(true=true$mstep$beta, vem=vem$mStep$beta, sd=sqrt(diag(jk$cov$beta)),
       stat=vem$mStep$beta / sqrt(diag(jk$cov$beta)), 
       statTrue=(vem$mStep$beta - true$mstep$beta) / sqrt(diag(jk$cov$beta)))
 
-lm(as.vector(vem$mStep$C%*%t(vem$mStep$C)) ~ -1 + as.vector(true$mstep$C%*%t(true$mstep$C)))$coef
-pseudoCovW <- t(vem$eStep$M)%*%vem$eStep$M/n + diag(colMeans(vem$eStep$S))
-pseudoCovW
-
-c(ELBO(data=data, mStep=true$mstep, eStep=true$eStep), 
-  ELBO(data=data, mStep=init$mStep, eStep=true$eStep),
-  ELBO(data=data, mStep=vem$mStep, eStep=vem$eStep))
+# Predictions
