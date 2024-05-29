@@ -7,7 +7,7 @@ dataDir <- '../data/'
 resDir <- '../results/'
 
 # Parms
-qList <- 2; qNb <- length(qList)
+qList <- 1:10; qNb <- length(qList)
 
 # Data
 dataName <- 'Souchet'

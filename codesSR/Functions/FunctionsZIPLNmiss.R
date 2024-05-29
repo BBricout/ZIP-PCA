@@ -20,7 +20,7 @@ InitZiPLNold <- function(data, q){
   pca <- prcomp(res, rank=q)
   mStep <- list(gamma=as.vector(glm(as.vector(1*(data$Y > 0)) ~ -1 + data$X, family='binomial')$coef), 
                 beta=reg$coef, 
-                C=pca$rotation %*% diag(pca$sdev[1:q]))
+                C=pca$rotation %*% diag(pca$sdev[1:q, drop=FALSE]))
   eStep <- list(xi=matrix(sum(data$Omega*(data$Y > 0))/sum(data$Omega), n, ncol(data$Y)), M=matrix(0, n, q), S=matrix(1e-4, n, q))
   return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca))
 }
@@ -31,8 +31,8 @@ InitZiPLN <- function(data, q){
   res[pres] <- reg$residuals
   pca <- prcomp(res, rank=q)
   zip <- EmZIP(X=data$X[pres, ], Y=as.vector(data$Y)[pres])
-  mStep <- list(gamma=zip$gamma, beta=zip$beta, 
-                C=pca$rotation %*% diag(pca$sdev[1:q]))
+  if(q==1){C=pca$rotation*pca$sdev[1]}else{C=pca$rotation %*% diag(pca$sdev[1:q, drop=FALSE])}
+  mStep <- list(gamma=zip$gamma, beta=zip$beta, C=C)
   # eStep <- list(xi=matrix(sum(data$Omega*(data$Y > 0))/sum(data$Omega), n, p), 
                 # M=matrix(0, n, q), S=matrix(1e-4, n, q))
   xi <- matrix(plogis(data$X%*%mStep$gamma), nrow(data$Y), ncol(data$Y))
@@ -97,12 +97,12 @@ ElboGradSi <- function(Si, datai, mStep, eStepi){
 }
 ElboMiSi <- function(miSi, datai, mStep, eStepi){
   q <- length(eStepi$mi)
-  eStepi$mi <- miSi[1:q]; eStepi$Si <- miSi[q+(1:q)]
+  eStepi$mi <- miSi[1:q, drop=FALSE]; eStepi$Si <- miSi[q+(1:q), drop=FALSE]
   ELBOi(datai=datai, mStep=mStep, eStepi=eStepi)
 }
 ElboGradMiSi <- function(miSi, datai, mStep, eStepi){
   q <- length(eStepi$mi)
-  mi <- eStepi$mi <- miSi[1:q]; Si <- eStepi$Si <- miSi[q+(1:q)]
+  mi <- eStepi$mi <- miSi[1:q]; Si <- eStepi$Si <- miSi[q+(1:q), drop=FALSE]
   c(ElboGradMi(mi, datai, mStep, eStepi), ElboGradSi(Si, datai, mStep, eStepi))
 }
 
@@ -150,9 +150,9 @@ VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-4){
           datai=datai, mStep=mStep, eStepi=eStepi, 
           method='L-BFGS-B', control=list(fnscale=-1), lower=c(rep(-Inf, q), rep(tolS, q)))$par
   }))
-  eStepTmp <- list(xi=eStep$xi, M=MS[, 1:q], S=MS[, q+(1:q)])
+  eStepTmp <- list(xi=eStep$xi, M=MS[, 1:q, drop=FALSE], S=MS[, q+(1:q), drop=FALSE])
   if(ELBO(data=data, mStep=mStep, eStep=eStepTmp) > ELBO(data=data, mStep=mStep, eStep=eStep)){
-    eStep$M <- MS[, 1:q]; eStep$S <- MS[, q+(1:q)]
+    eStep$M <- MS[, 1:q, drop=FALSE]; eStep$S <- MS[, q+(1:q), drop=FALSE]
   }
   return(eStep)
 }
@@ -224,7 +224,7 @@ VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4, p
       if(plot){plot(elboPath[1:iter], type='b', xlab='iter', ylab='elbo', 
                     ylim=quantile(elboPath[1:iter], probs=c(0.1, 1), na.rm=TRUE))}
       cat(' /', iter, ':', elboPath[iter], diff)
-    }#else{cat('', iter)}
+    }else{if(prod(dim(data$Y)) > 3000){cat('', iter)}}
   }
   cat(' /', iter, ':', elboPath[iter], diff, '\n')
   pred <- NuMuA(data=data, mStep=mStep, eStep=eStep)
