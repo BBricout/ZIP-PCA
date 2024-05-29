@@ -68,7 +68,17 @@ if(!file.exists(fitFile)){
 # # if(exportFig){dev.off()}
 
 # Jackknife
-jk <- JackknifeZiPLN(data=data, fit=vem, iterMax=1e1)
+jk <- JackknifeZiPLN(data=data, fit=vem)
+vem$iter
+summary(sapply(1:n, function(i){jk$fit_iList[[i]]$iter}))
+
+rbind(true=true$mstep$gamma, vem=vem$mStep$gamma, sd=sqrt(diag(jk$cov$gamma)),
+      stat=vem$mStep$gamma / sqrt(diag(jk$cov$gamma)), 
+      statTrue=(vem$mStep$gamma - true$mstep$gamma) / sqrt(diag(jk$cov$gamma)))
+
+rbind(true=true$mstep$beta, vem=vem$mStep$beta, sd=sqrt(diag(jk$cov$beta)),
+      stat=vem$mStep$beta / sqrt(diag(jk$cov$beta)), 
+      statTrue=(vem$mStep$beta - true$mstep$beta) / sqrt(diag(jk$cov$beta)))
 
 lm(as.vector(vem$mStep$C%*%t(vem$mStep$C)) ~ -1 + as.vector(true$mstep$C%*%t(true$mstep$C)))$coef
 pseudoCovW <- t(vem$eStep$M)%*%vem$eStep$M/n + diag(colMeans(vem$eStep$S))
