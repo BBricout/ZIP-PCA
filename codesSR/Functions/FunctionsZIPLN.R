@@ -2,29 +2,6 @@
 
 ################################################################################
 # Simul
-SimZiPLN <- function(n, p, d, q, obs=0.9, beta0=2){
-  X <- matrix(rnorm(n*p*d), n*p, d); X[, 1] <- 1
-  ij <- cbind(rep(1:n, p), rep(1:p, each=n))
-  # presence
-  gamma <- rnorm(d)/sqrt(d)
-  nu <- matrix(X%*%gamma, n, p)
-  probU <- plogis(nu)
-  U <- matrix(rbinom(n*p, 1, probU), n, p)
-  # latent
-  W <- matrix(rnorm(n*q), n, q)
-  C <- matrix(rnorm(p*q), p, q)/sqrt(q)
-  Z <- W%*%t(C)
-  # abundance
-  beta <- rnorm(d)/sqrt(d); beta[1] <- beta[1] + beta0
-  mu <- matrix(X%*%beta, n, p)
-  lambdaY <- exp(mu + Z)
-  Yall <- matrix(rpois(n*p, lambdaY), n, p)
-  Ytrue <- Yall*U
-  # Missing
-  Omega <- matrix(rbinom(n*p, 1, obs), n, p)
-  Y <- Ytrue * Omega
-  return(list(X=X, Y=Y, Omega=Omega, ij=ij, U=U, W=W, Z=Z, Yall=Yall, Ytrue=Ytrue, gamma=gamma, beta=beta, C=C))
-}
 NuMuA <- function(data, mStep, eStep){
   nu <- matrix(data$X%*%mStep$gamma, n, p)
   mu <- matrix(data$X%*%mStep$beta, n, p)
@@ -35,13 +12,20 @@ NuMuA <- function(data, mStep, eStep){
 
 ################################################################################
 # Init
+InitZiPLNold <- function(data){
+  reg <- lm(as.vector(log(1+data$Y)) ~ -1 + data$X)
+  pca <- prcomp(matrix(reg$residuals, n, p), rank=q)
+  mStep <- list(gamma=as.vector(glm(as.vector(1*(data$Y > 0)) ~ -1 + data$X, family='binomial')$coef),
+                beta=reg$coef,
+                C=pca$rotation %*% diag(pca$sdev[1:q]))
+  eStep <- list(xi=matrix(mean(data$Y > 0), n, p), M=matrix(0, n, q), S=matrix(1e-4, n, q))
+  return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca))
+}
 InitZiPLN <- function(data){
   reg <- lm(as.vector(log(1+data$Y)) ~ -1 + data$X)
-  res <- matrix(0, nrow(data$Y), ncol(data$Y))
-  res[which(data$Omega==1)] <- reg$residuals
-  pca <- prcomp(res, rank=q)
-  mStep <- list(gamma=as.vector(glm(as.vector(1*(data$Y > 0)) ~ -1 + data$X, family='binomial')$coef), 
-                beta=reg$coef, 
+  pca <- prcomp(matrix(reg$residuals, n, p), rank=q)
+  zip <- EmZIP(X=data$X, Y=as.vector(data$Y))
+  mStep <- list(gamma=zip$gamma, beta=zip$beta, 
                 C=pca$rotation %*% diag(pca$sdev[1:q]))
   eStep <- list(xi=matrix(mean(data$Y > 0), n, p), M=matrix(0, n, q), S=matrix(1e-4, n, q))
   return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca))
@@ -64,7 +48,7 @@ ELBOi <- function(datai, mStep, eStepi){
   Ai <- exp(mui + as.vector(mStep$C%*%eStepi$mi) + 0.5*diag(mStep$C%*%diag(eStepi$Si)%*%t(mStep$C)))
   elboi <- sum(nui*eStepi$xii - log(1 + exp(nui)))
   elboi <- elboi - 0.5*(sum(eStepi$mi^2) + sum(eStepi$Si))
-  elboi <- elboi + sum(datai$Omegai * eStepi$xii * (-Ai + datai$Yi*(mui + mStep$C%*%eStepi$mi) - datai$logFactYi))
+  elboi <- elboi + sum(eStepi$xii * (-Ai + datai$Yi*(mui + mStep$C%*%eStepi$mi) - datai$logFactYi))
   # Excludes xii=0 or 1, before computing the entropy
   xii <- eStepi$xii[which(eStepi$xii*(1-eStepi$xii) > 0)]
   elboi <- elboi + sum(xii * log(xii/(1 - xii)) + log(1 - xii))
@@ -73,13 +57,12 @@ ELBOi <- function(datai, mStep, eStepi){
 }
 ELBO <- function(data, mStep, eStep){
   sum(sapply(1:nrow(data$Y), function(i){
-    datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], 
-                  Omegai=data$Omega[i, ], logFactYi=data$logFactY[i, ])
+    datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], logFactYi=data$logFactY[i, ])
     eStepi <- list(xii=eStep$xi[i, ], mi=eStep$M[i, ], Si=eStep$S[i, ])
     ELBOi(datai=datai, mStep=mStep, eStepi=eStepi)
   }))
 }
-
+  
 ################################################################################
 # VE step
 ElboMi <- function(mi, datai, mStep, eStepi){
@@ -89,7 +72,7 @@ ElboMi <- function(mi, datai, mStep, eStepi){
 ElboGradMi <- function(mi, datai, mStep, eStepi){
   mui <- as.vector(datai$Xi%*%mStep$beta)
   Ai <- exp(mui + mi%*%t(mStep$C) + 0.5*diag(mStep$C%*%diag(eStepi$Si)%*%t(mStep$C)))
-  as.vector(-mi + (datai$Omegai*eStepi$xii*(datai$Yi - Ai))%*%mStep$C)
+  as.vector(-mi + (eStepi$xii*(datai$Yi - Ai))%*%mStep$C)
 }
 ElboSi <- function(Si, datai, mStep, eStepi){
   eStepi$Si <- Si
@@ -98,8 +81,32 @@ ElboSi <- function(Si, datai, mStep, eStepi){
 ElboGradSi <- function(Si, datai, mStep, eStepi){
   mui <- as.vector(datai$Xi%*%mStep$beta)
   Ai <- exp(mui + eStepi$mi%*%t(mStep$C) + 0.5*diag(mStep$C%*%diag(Si)%*%t(mStep$C)))
-  as.vector(0.5*(1/Si - 1 - (datai$Omegai*eStepi$xii*Ai)%*%(mStep$C^2)))
+  as.vector(0.5*(1/Si - 1 - (eStepi$xii*Ai)%*%(mStep$C^2)))
 }
+# ElboM <- function(Mvec, data, mStep, eStep){
+#   eStep$M <- matrix(Mvec, nrow(data$Y), ncol(eStep$M))
+#   ELBO(data=data, mStep=mStep, eStep=eStep)
+# }
+# ElboGradM <- function(Mvec, data, mStep, eStep){
+#   M <- matrix(Mvec, nrow(data$Y), ncol(eStep$M))
+#   as.vector(t(sapply(1:nrow(data$Y), function(i){
+#     datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], logFactYi=data$logFactY[i, ])
+#     eStepi <- list(xii=eStep$xi[i, ], mi=NULL, Si=eStep$S[i, ])
+#     ElboGradMi(mi=M[i, ], datai=datai, mStep=mStep, eStepi=eStepi)
+#   })))
+# }
+# ElboS <- function(Svec, datai, mStep, eStepi){
+#   eStep$S <- matrix(Svec, nrow(data$Y), ncol(eStep$M))
+#   ELBO(data=data, mStep=mStep, eStep=eStep)
+# }
+# ElboGradS <- function(S, data, mStep, eStep){
+#   S <- matrix(Svec, nrow(data$Y), ncol(eStep$M))
+#   as.vector(t(sapply(1:nrow(data$Y), function(i){
+#     datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], logFactYi=data$logFactY[i, ])
+#     eStepi <- list(xii=eStep$xi[i, ], mi=NULL, Si=eStep$S[i, ])
+#     ElboGradSi(Si=S[i, ], datai=datai, mStep=mStep, eStepi=eStepi)
+#   })))
+# }
 
 VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-4){
   n <- nrow(data$Y); p <- ncol(data$Y); d <- ncol(data$X); q <- ncol(eStep$M)
@@ -113,8 +120,7 @@ VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-4){
     eStep$xi <- xi
   }
   M <- t(sapply(1:n, function(i){
-    datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], 
-                  Omegai=data$Omega[i, ], logFactYi=data$logFactY[i, ])
+    datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], logFactYi=data$logFactY[i, ])
     eStepi <- list(xii=eStep$xi[i, ], mi=NULL, Si=eStep$S[i, ])
     optim(par=eStep$M[i, ], fn=ElboMi, gr=ElboGradMi, 
           datai=datai, mStep=mStep, eStepi=eStepi, 
@@ -125,8 +131,7 @@ VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-4){
     eStep$M <- M
   }
   S <- t(sapply(1:n, function(i){
-    datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], 
-                  Omegai=data$Omega[i, ], logFactYi=data$logFactY[i, ])
+    datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], logFactYi=data$logFactY[i, ])
     eStepi <- list(xii=eStep$xi[i, ], mi=eStep$M[i, ], Si=eStep$S[i, ])
     optim(par=eStepi$Si, fn=ElboSi, gr=ElboGradSi, 
           datai=datai, mStep=mStep, eStepi=eStepi, 
@@ -155,7 +160,7 @@ ElboBeta <- function(beta, data, mStep, eStep){
   ELBO(data=data, mStep=mStep, eStep=eStep)
 }
 ElboGradBeta <- function(beta, data, mStep, eStep){
-  as.vector(t(data$X) %*% as.vector(data$Omega*eStep$xi*(data$Y - NuMuA(data=data, mStep=mStep, eStep=eStep)$A)))
+  as.vector(t(data$X) %*% as.vector(eStep$xi*(data$Y - NuMuA(data=data, mStep=mStep, eStep=eStep)$A)))
 }
 ElboC <- function(vecC, data, mStep, eStep){
   mStep$C <- matrix(vecC, ncol(data$Y), ncol(eStep$M))
@@ -164,7 +169,7 @@ ElboC <- function(vecC, data, mStep, eStep){
 ElboGradC <- function(vecC, data, mStep, eStep){
   mStep$C <- matrix(vecC, ncol(data$Y), ncol(eStep$M))
   A <- NuMuA(data=data, mStep=mStep, eStep=eStep)$A
-  as.vector(t(data$Omega*eStep$xi*(data$Y - A))%*%eStep$M - (t(data$Omega*eStep$xi*A)%*%eStep$S)*mStep$C)
+  as.vector(t(eStep$xi*(data$Y - A))%*%eStep$M - (t(eStep$xi*A)%*%eStep$S)*mStep$C)
 }
 Mstep <- function(data, mStep, eStep){
   beta <- optim(par=mStep$beta, fn=ElboBeta, gr=ElboGradBeta, data=data, mStep=mStep, eStep=eStep, 
@@ -204,7 +209,7 @@ VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4){
     if(iter%%round(sqrt(iterMax))==0){
       plot(elboPath[1:iter], type='b', xlab='iter', ylim=quantile(elboPath[1:iter], probs=c(0.1, 1), na.rm=TRUE))
       cat(' /', iter, ':', elboPath[iter], diff)
-    }else{cat('', iter)}
+    }#else{cat('', iter)}
   }
   cat('\n')
   pred <- NuMuA(data=data, mStep=mStep, eStep=eStep)
