@@ -53,9 +53,11 @@ Rcpp::List nlopt_optimize_rank(
             set_per_value_xtol_abs(optimizer.get(), packed);
         }
     }
+    
+    std::vector<double> objective_values;
 
     // Optimize
-    auto objective_and_grad = [&metadata, &O, &X, &Y, &w](const double * params, double * grad) -> double {
+    auto objective_and_grad = [&metadata, &O, &X, &Y, &w, &objective_values](const double * params, double * grad) -> double {
         const arma::mat B = metadata.map<B_ID>(params);
         const arma::mat C = metadata.map<C_ID>(params);
         const arma::mat M = metadata.map<M_ID>(params);
@@ -64,12 +66,20 @@ Rcpp::List nlopt_optimize_rank(
         arma::mat S2 = S % S;
         arma::mat Z = O + X * B + M * C.t();
         arma::mat A = exp(Z + 0.5 * S2 * (C % C).t());
+        
+        std::cout << "ok1" <<std::endl;
         double objective = accu(diagmat(w) * (A - Y % Z)) + 0.5 * accu(diagmat(w) * (M % M + S2 - log(S2) - 1.));
+        
+        std::cout << "ok1" <<std::endl;
+        
+        objective_values.push_back(objective);
 
         metadata.map<B_ID>(grad) = (X.each_col() % w).t() * (A - Y);
         metadata.map<C_ID>(grad) = (diagmat(w) * (A - Y)).t() * M + (A.t() * (S2.each_col() % w)) % C;
         metadata.map<M_ID>(grad) = diagmat(w) * ((A - Y) * C + M);
         metadata.map<S_ID>(grad) = diagmat(w) * (S - 1. / S + A * (C % C) % S);
+        
+        std::cout << "ok3" <<std::endl;
         return objective;
     };
     OptimizerResult result = minimize_objective_on_parameters(optimizer.get(), objective_and_grad, parameters);
@@ -99,6 +109,7 @@ Rcpp::List nlopt_optimize_rank(
         Rcpp::Named("Sigma", Sigma),
         Rcpp::Named("Omega", Omega),
         Rcpp::Named("Ji", Ji),
+        Rcpp::Named("objective_values", objective_values),
         Rcpp::Named("monitoring", Rcpp::List::create(
             Rcpp::Named("status", static_cast<int>(result.status)),
             Rcpp::Named("backend", "nlopt"),

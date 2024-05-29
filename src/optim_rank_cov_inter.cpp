@@ -100,9 +100,11 @@ Rcpp::List nlopt_optimize_rank_cov(
         }
     }
     
+    std::vector<double> objective_values;
+    
 
     // Optimize
-    auto objective_and_grad = [&metadata, &O, &X, &Y, &w, &R](const double * params, double * grad) -> double {
+    auto objective_and_grad = [&metadata, &O, &X, &Y, &w, &R, &objective_values](const double * params, double * grad) -> double {
         const arma::mat B = metadata.map<B_ID>(params);
         const arma::mat C = metadata.map<C_ID>(params);
         const arma::mat M = metadata.map<M_ID>(params);
@@ -124,7 +126,8 @@ Rcpp::List nlopt_optimize_rank_cov(
         arma::mat A = exp(Z + 0.5 * S2 * (C % C).t());
         arma::vec vecA = exp(vecZ);
         double objective = accu(diagmat(w) * (R % (A - Y % Z))) + 0.5 * accu(diagmat(w) * (M % M + S2 - log(S2) - 1.));
-           
+        
+        objective_values.push_back(objective);        
     
         
 
@@ -166,6 +169,7 @@ Rcpp::List nlopt_optimize_rank_cov(
         Rcpp::Named("Sigma", Sigma),
         Rcpp::Named("Omega", Omega),
         Rcpp::Named("Ji", Ji),
+        Rcpp::Named("objective_values", objective_values),
         Rcpp::Named("monitoring", Rcpp::List::create(
             Rcpp::Named("status", static_cast<int>(result.status)),
             Rcpp::Named("backend", "nlopt"),
