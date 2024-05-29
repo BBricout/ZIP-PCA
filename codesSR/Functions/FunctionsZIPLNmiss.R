@@ -3,6 +3,7 @@
 ################################################################################
 # Utils
 NuMuA <- function(data, mStep, eStep){
+  n <- nrow(data$Y); p <- ncol(data$Y)
   nu <- matrix(data$X%*%mStep$gamma, n, p)
   mu <- matrix(data$X%*%mStep$beta, n, p)
   A <- exp(mu + eStep$M%*%t(mStep$C) + 
@@ -201,7 +202,7 @@ Mstep <- function(data, mStep, eStep){
 
 ################################################################################
 # VEM
-VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4){
+VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4, plot=TRUE){
   # init <- InitZiPLN(data); tol=1e-4; iterMax=1e3; tolXi=1e-5; tolS=1e-5
   mStep <- init$mStep; eStep <- init$eStep
   elboPath <- rep(NA, iterMax)
@@ -221,8 +222,8 @@ VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4){
     diff <- max(max(abs(eStepNew$M - eStep$M)), max(abs(mStepNew$C - mStep$C)))
     mStep <- mStepNew; eStep <- eStepNew
     if(iter%%round(sqrt(iterMax))==0){
-      plot(elboPath[1:iter], type='b', xlab='iter', ylab='elbo', 
-           ylim=quantile(elboPath[1:iter], probs=c(0.1, 1), na.rm=TRUE))
+      if(plot){plot(elboPath[1:iter], type='b', xlab='iter', ylab='elbo', 
+                    ylim=quantile(elboPath[1:iter], probs=c(0.1, 1), na.rm=TRUE))}
       cat(' /', iter, ':', elboPath[iter], diff)
     }#else{cat('', iter)}
   }
@@ -231,6 +232,34 @@ VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4){
   pred$Yhat <- eStep$xi * pred$A
   elboPath <- elboPath[1:iter]
   return(list(mStep=mStep, eStep=eStep, pred=pred, iter=iter, elboPath=elboPath, elbo=elboPath[iter]))
+}
+
+################################################################################
+# Jackknife
+JackknifeZiPLN <- function(data, fit, iterMax=1e3){
+  n <- nrow(data$Y); p <- ncol(data$Y); d <- ncol(data$X); q <- ncol(fit$eStep$M)
+  fit_iList <- list()
+  ij_1 <- cbind(rep(1:(n-1), p), rep(1:p, each=n-1))
+  gammaMat <- betaMat <- matrix(NA, n, d)
+  CMat <- matrix(NA, n, p*q)
+  par(mfrow=c(5, 5))
+  for(i in 1:n){
+    cat('i =', i, ': ')
+    data_i <- list(X=data$X[-which(data$ij[, 1]==i), ], Y=data$Y[-i, ], Omega=data$Omega[-i, ],
+                   ij=ij_1, logFactY=data$logFactY[-i, ])
+    init_i <- list(mStep=list(gamma=fit$mStep$gamma, beta=fit$mStep$beta, C=fit$mStep$C),
+                   eStep=list(xi=fit$eStep$xi[-i, ], M=fit$eStep$M[-i, ], S=fit$eStep$S[-i, ]))
+    fit_iList[[i]] <- VemZiPLN(data=data_i, init=init_i, plot=FALSE, iterMax=iterMax)
+    plot(fit_iList[[i]]$elboPath, main=i, ylim=quantile(fit_iList[[i]]$elboPath, probs=c(0.1, 1)), xlab='', ylab='')
+    gammaMat[i, ] <- fit_iList[[i]]$mStep$gamma; betaMat[i, ] <- fit_iList[[i]]$mStep$beta
+    CMat[i, ] <- as.vector(fit_iList[[i]]$mStep$C)
+  }
+  jkCoef <- (n-1)^2/n
+  return(list(fit_iList=fit_iList, 
+              parms_i=list(gamma=gammaMat, beta=betaMat, C=CMat),
+              cov=list(gamma=jkCoef*cov(gammaMat), beta=jkCoef*cov(betaMat), 
+                       C=jkCoef*cov(CMat), theta=jkCoef*cov(cbind(gammaMat, betaMat, CMat)))
+              ))
 }
 
 ################################################################################
