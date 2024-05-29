@@ -21,7 +21,7 @@ InitZiPLNold <- function(data, q){
   mStep <- list(gamma=as.vector(glm(as.vector(1*(data$Y > 0)) ~ -1 + data$X, family='binomial')$coef), 
                 beta=reg$coef, 
                 C=pca$rotation %*% diag(pca$sdev[1:q]))
-  eStep <- list(xi=matrix(sum(data$Omega*(data$Y > 0))/sum(data$Omega), n, p), M=matrix(0, n, q), S=matrix(1e-4, n, q))
+  eStep <- list(xi=matrix(sum(data$Omega*(data$Y > 0))/sum(data$Omega), n, ncol(data$Y)), M=matrix(0, n, q), S=matrix(1e-4, n, q))
   return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca))
 }
 InitZiPLN <- function(data, q){
@@ -35,9 +35,9 @@ InitZiPLN <- function(data, q){
                 C=pca$rotation %*% diag(pca$sdev[1:q]))
   # eStep <- list(xi=matrix(sum(data$Omega*(data$Y > 0))/sum(data$Omega), n, p), 
                 # M=matrix(0, n, q), S=matrix(1e-4, n, q))
-  xi <- matrix(plogis(data$X%*%mStep$gamma), n, p)
+  xi <- matrix(plogis(data$X%*%mStep$gamma), nrow(data$Y), ncol(data$Y))
   xi[which(data$Y > 0)] <- 1
-  eStep <- list(xi=xi, M=matrix(0, n, q), S=matrix(1e-4, n, q))
+  eStep <- list(xi=xi, M=matrix(0, nrow(data$Y), q), S=matrix(1e-4, nrow(data$Y), q))
   return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca))
 }
 OracleZiPLN <- function(data, latent){

@@ -26,23 +26,23 @@ if(!file.exists(simFile)){
 }else{load(simFile)}
 c(sum(diag(cov(matrix(data$X%*%true$mstep$beta, n, p)))), sum(diag(cov(true$latent$Z))))
 
-# First iterations
-ELBO(data=data, mStep=true$mstep, eStep=true$eStep)
-init <- InitZiPLN(data, q)
-ELBO(data=data, mStep=init$mStep, eStep=init$eStep)
-mStep <- Mstep(data=data, mStep=init$mStep, eStep=init$eStep)
-ELBO(data=data, mStep=mStep, eStep=init$eStep)
-eStep <- VEstep(data=data, mStep=mStep, eStep=init$eStep)
-ELBO(data=data, mStep=mStep, eStep=eStep)
+# # First iterations
+# ELBO(data=data, mStep=true$mstep, eStep=true$eStep)
+# init <- InitZiPLN(data, q)
+# ELBO(data=data, mStep=init$mStep, eStep=init$eStep)
+# mStep <- Mstep(data=data, mStep=init$mStep, eStep=init$eStep)
+# ELBO(data=data, mStep=mStep, eStep=init$eStep)
+# eStep <- VEstep(data=data, mStep=mStep, eStep=init$eStep)
+# ELBO(data=data, mStep=mStep, eStep=eStep)
 
 # Fit
 fitName <- paste0('ZiPLNfit', simParms)
 fitFile <- paste0(simDir, fitName, '.Rdata')
 if(!file.exists(fitFile)){
   print(simName)
-  init <- InitZiPLN(data)
+  init <- InitZiPLN(data=data, q=q)
   vem <- VemZiPLN(data, init=init)
-  # save(oracle, init, vem, file=fitFile)
+  save(init, vem, file=fitFile)
 }else{load(fitFile)}
 
 # # Results
@@ -77,7 +77,7 @@ c(ELBO(data=data, mStep=true$mstep, eStep=true$eStep),
 
 # Jackknife
 covName <- paste0('ZiPLNcov', simParms)
-covFile <- paste0(simDir, fitName, '.Rdata')
+covFile <- paste0(simDir, covName, '.Rdata')
 if(!file.exists(covFile)){
   jk <- JackknifeZiPLN(data=data, fit=vem)
   save(jk, file=covFile)
