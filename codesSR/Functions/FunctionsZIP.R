@@ -22,9 +22,16 @@ objBeta <- function(beta, Y, X, tau){
 gradBeta <- function(beta, Y, X, tau){
   as.vector(t(X)%*%((1-tau)*(Y - exp(X%*%beta))))
 }
+# logLik <- function(gamma, beta, Y, Y0, X){
+#   pi <- plogis(X%*%gamma); lambda <- exp(X%*%beta)
+#   sum(log(pi*Y0 + (1-pi)*dpois(Y, lambda)))
+# }
 logLik <- function(gamma, beta, Y, Y0, X){
+  pres <- which(Y0==0)
   pi <- plogis(X%*%gamma); lambda <- exp(X%*%beta)
-  sum(log(pi*Y0 + (1-pi)*dpois(Y, lambda)))
+  logL <- log(pi*Y0 + (1-pi)*dpois(Y, lambda))
+  logL[pres] <- log(1-pi[pres])+dpois(Y[pres], lambda[pres], log=TRUE)
+  sum(logL)
 }
 
 # Algorithme EM
@@ -38,16 +45,16 @@ EmZIP <- function(X, Y, tol=1e-6, iterMax=1e3){
     iter <- iter+1
     # Etape E
     pi <- plogis(X%*%gamma); lambda <- exp(X%*%beta)
-    tau <- as.vector(pi*Y0 / (pi + (1-pi)*exp(-lambda)))
+    tauNew <- as.vector(pi*Y0 / (pi + (1-pi)*exp(-lambda)))
     # Etape M
-    alphaNew <- optim(par=gamma, fn=objGamma, gr=gradGamma, Y0=Y0, X=X, tau=tau, 
+    gammaNew <- optim(par=gamma, fn=objGamma, gr=gradGamma, Y0=Y0, X=X, tau=tauNew, 
                       control=list(fnscale=-1))$par
-    betaNew <- optim(par=beta, fn=objBeta, gr=gradBeta, Y=Y, X=X, tau=tau, 
+    betaNew <- optim(par=beta, fn=objBeta, gr=gradBeta, Y=Y, X=X, tau=tauNew, 
                      control=list(fnscale=-1))$par
     # Test & mise à jour
-    diff <- max(abs(c(gamma, beta) - c(alphaNew, betaNew)))
+    if(iter > 1){diff <- max(max(abs(tauNew-tau)), max(gammaNew-gamma), max(betaNew-beta))}
     logL[iter] <- logLik(gamma, beta, Y, Y0, X)
-    gamma <- alphaNew; beta <- betaNew
+    gamma <- gammaNew; beta <- betaNew; tau <- tauNew
   }
   return(list(gamma=-gamma, beta=beta, iter, logLpath=logL, logL=logL[iter]))
 }

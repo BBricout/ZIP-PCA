@@ -5,32 +5,29 @@
 NuMuA <- function(data, mStep, eStep){
   nu <- matrix(data$X%*%mStep$gamma, nrow(data$Y), ncol(data$Y))
   mu <- matrix(data$X%*%mStep$beta, nrow(data$Y), ncol(data$Y))
-  A <- exp(mu + eStep$M%*%t(mStep$C) + 
-             0.5*t(sapply(1:nrow(data$Y), function(i){diag(mStep$C%*%diag(eStep$S[i, , drop=FALSE])%*%t(mStep$C))})))
+  # A <- exp(mu + eStep$M%*%t(mStep$C) + 
+  #            0.5*t(sapply(1:nrow(data$Y), function(i){diag(mStep$C%*%diag(as.vector(eStep$S[i, , drop=FALSE]))%*%t(mStep$C))})))
+  if(ncol(eStep$M)==1){
+    A <- exp(mu + eStep$M%*%t(mStep$C) + 
+               0.5*t(sapply(1:nrow(data$Y), function(i){eStep$S[i, ]*mStep$C^2})))
+  }else{
+    A <- exp(mu + eStep$M%*%t(mStep$C) + 
+               0.5*t(sapply(1:nrow(data$Y), function(i){diag(mStep$C%*%diag(eStep$S[i, ])%*%t(mStep$C))})))
+  }
   return(list(nu=nu, mu=mu, A=A))
 }
 
 ################################################################################
 # Init
-InitZiPLNold <- function(data, q){
-  pres <- which(data$Omega==1)
-  reg <- lm(as.vector(log(1+data$Y)[pres]) ~ -1 + data$X[pres, ])
-  res <- matrix(0, nrow(data$Y), ncol(data$Y))
-  res[pres] <- reg$residuals
-  pca <- prcomp(res, rank=q)
-  mStep <- list(gamma=as.vector(glm(as.vector(1*(data$Y > 0)) ~ -1 + data$X, family='binomial')$coef), 
-                beta=reg$coef, 
-                C=pca$rotation %*% diag(pca$sdev[1:q, drop=FALSE]))
-  eStep <- list(xi=matrix(sum(data$Omega*(data$Y > 0))/sum(data$Omega), n, ncol(data$Y)), M=matrix(0, n, q), S=matrix(1e-4, n, q))
-  return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca))
-}
 InitZiPLN <- function(data, q){
-  pres <- which(data$Omega==1)
-  reg <- lm(as.vector(log(1+data$Y))[pres] ~ -1 + data$X[pres, ])
+  obs <- which(data$Omega==1)
+  reg <- lm(as.vector(log(1+data$Y))[obs] ~ -1 + data$X[obs, ])
   res <- matrix(0, nrow(data$Y), ncol(data$Y))
-  res[pres] <- reg$residuals
+  res[obs] <- reg$residuals
   pca <- prcomp(res, rank=q)
-  zip <- EmZIP(X=data$X[pres, ], Y=as.vector(data$Y)[pres])
+  zip <- EmZIP(X=data$X[obs, ], Y=as.vector(data$Y)[obs])
+  # zip <- zeroinfl(as.vector(data$Y[obs]) ~ data$X[obs, ], dist='poisson')
+  # zip$gamma <- -zip$coefficients$zero; zip$beta <- zip$coefficients$count
   if(q==1){C=pca$rotation*pca$sdev[1]}else{C=pca$rotation %*% diag(pca$sdev[1:q, drop=FALSE])}
   mStep <- list(gamma=zip$gamma, beta=zip$beta, C=C)
   # eStep <- list(xi=matrix(sum(data$Omega*(data$Y > 0))/sum(data$Omega), n, p), 
@@ -38,7 +35,7 @@ InitZiPLN <- function(data, q){
   xi <- matrix(plogis(data$X%*%mStep$gamma), nrow(data$Y), ncol(data$Y))
   xi[which(data$Y > 0)] <- 1
   eStep <- list(xi=xi, M=matrix(0, nrow(data$Y), q), S=matrix(1e-4, nrow(data$Y), q))
-  return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca))
+  return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca, zip=zip))
 }
 OracleZiPLN <- function(data, latent){
   pca <- prcomp(latent$Z, rank=ncol(latent$W))
@@ -58,7 +55,7 @@ ELBOi <- function(datai, mStep, eStepi){
   if(length(eStepi$mi)==1){
     Ai <- exp(mui + as.vector(mStep$C%*%eStepi$mi) + as.vector(0.5*eStepi$Si[1]*mStep$C^2))
   }else{
-    Ai <- exp(mui + as.vector(mStep$C%*%eStepi$mi) + 0.5*diag(mStep$C%*%diag(eStepi$Si)%*%t(mStep$C)))
+    Ai <- exp(mui + as.vector(eStepi$mi%*%t(mStep$C)) + 0.5*diag(mStep$C%*%diag(eStepi$Si)%*%t(mStep$C)))
   }
   elboi <- sum(nui*eStepi$xii - log(1 + exp(nui)))
   elboi <- elboi - 0.5*(sum(eStepi$mi^2) + sum(eStepi$Si))
@@ -74,7 +71,7 @@ ELBO <- function(data, mStep, eStep){
   sum(sapply(1:nrow(data$Y), function(i){
     datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], 
                   Omegai=data$Omega[i, ], logFactYi=data$logFactY[i, ])
-    eStepi <- list(xii=eStep$xi[i, ], mi=eStep$M[i, , drop=FALSE], Si=eStep$S[i, , drop=FALSE])
+    eStepi <- list(xii=eStep$xi[i, ], mi=as.vector(eStep$M[i, , drop=FALSE]), Si=as.vector(eStep$S[i, , drop=FALSE]))
     ELBOi(datai=datai, mStep=mStep, eStepi=eStepi)
   }))
 }
@@ -246,6 +243,40 @@ JackknifeZiPLN <- function(data, fit, iterMax=1e3){
 }
 
 ################################################################################
+# VEM
+VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4, plot=TRUE){
+  # init <- InitZiPLN(data); tol=1e-4; iterMax=1e3; tolXi=1e-5; tolS=1e-5
+  mStep <- init$mStep; eStep <- init$eStep
+  elboPath <- rep(NA, iterMax)
+  diff <- 2*tol; iter <- 1
+  elboPath[iter] <- ELBO(data=data, mStep=mStep, eStep=eStep)
+  cat(iter, ':', elboPath[iter], diff)
+  while((iter < iterMax) & (diff > tol)){
+    iter <- iter+1
+    mStepNew <- Mstep(data=data, mStep=mStep, eStep=eStep)
+    eStepNew <- VEstep(data=data, mStep=mStepNew, eStep=eStep, tolXi=tolXi, tolS=tolS)
+    elboPath[iter] <- ELBO(data=data, mStep=mStepNew, eStep=eStepNew)
+    if(elboPath[iter] < elboPath[iter-1]){
+      cat('', iter, ':', 'E-1', ELBO(data=data, mStep=mStep, eStep=eStep), 
+          'M', ELBO(data=data, mStep=mStepNew, eStep=eStep), 
+          'E', ELBO(data=data, mStep=mStepNew, eStep=eStepNew), '\n')
+    }
+    diff <- max(max(abs(eStepNew$M - eStep$M)), max(abs(mStepNew$C - mStep$C)))
+    mStep <- mStepNew; eStep <- eStepNew
+    if(iter%%round(sqrt(iterMax))==0){
+      if(plot){plot(elboPath[1:iter], type='b', xlab='iter', ylab='elbo', main='ZiPLN', 
+                    ylim=quantile(elboPath[1:iter], probs=c(0.1, 1), na.rm=TRUE))}
+      cat(' /', iter, ':', elboPath[iter], diff)
+    }else{if(prod(dim(data$Y)) > 3000){cat('', iter)}}
+  }
+  cat(' /', iter, ':', elboPath[iter], diff, '\n')
+  pred <- NuMuA(data=data, mStep=mStep, eStep=eStep)
+  pred$Yhat <- eStep$xi * pred$A
+  elboPath <- elboPath[1:iter]
+  return(list(mStep=mStep, eStep=eStep, pred=pred, iter=iter, elboPath=elboPath, elbo=elboPath[iter]))
+}
+
+################################################################################
 # Prediction
 PredZiPLN <- function(data, fit){
   n <- nrow(data$Y); p <- ncol(data$Y)
@@ -277,39 +308,5 @@ PredZiPLN <- function(data, fit){
                         lZipCI=margZipCIl, uZipCI=margZipCIu, lPoisCI=margPoisCIl, uPoisCI=margPoisCIu), 
               cond=list(pi=condPi, lambda=condLambda, esp=condEsp, var=condVar, 
                         lZipCI=condZipCIl, uZipCI=condZipCIu), lPoisCI=condPoisCIl, uPoisCI=condPoisCIu))
-}
-
-################################################################################
-# VEM
-VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4, plot=TRUE){
-  # init <- InitZiPLN(data); tol=1e-4; iterMax=1e3; tolXi=1e-5; tolS=1e-5
-  mStep <- init$mStep; eStep <- init$eStep
-  elboPath <- rep(NA, iterMax)
-  diff <- 2*tol; iter <- 1
-  elboPath[iter] <- ELBO(data=data, mStep=mStep, eStep=eStep)
-  cat(iter, ':', elboPath[iter], diff)
-  while((iter < iterMax) & (diff > tol)){
-    iter <- iter+1
-    mStepNew <- Mstep(data=data, mStep=mStep, eStep=eStep)
-    eStepNew <- VEstep(data=data, mStep=mStepNew, eStep=eStep, tolXi=tolXi, tolS=tolS)
-    elboPath[iter] <- ELBO(data=data, mStep=mStepNew, eStep=eStepNew)
-    if(elboPath[iter] < elboPath[iter-1]){
-      cat('', iter, ':', 'E-1', ELBO(data=data, mStep=mStep, eStep=eStep), 
-          'M', ELBO(data=data, mStep=mStepNew, eStep=eStep), 
-          'E', ELBO(data=data, mStep=mStepNew, eStep=eStepNew), '\n')
-    }
-    diff <- max(max(abs(eStepNew$M - eStep$M)), max(abs(mStepNew$C - mStep$C)))
-    mStep <- mStepNew; eStep <- eStepNew
-    if(iter%%round(sqrt(iterMax))==0){
-      if(plot){plot(elboPath[1:iter], type='b', xlab='iter', ylab='elbo', 
-                    ylim=quantile(elboPath[1:iter], probs=c(0.1, 1), na.rm=TRUE))}
-      cat(' /', iter, ':', elboPath[iter], diff)
-    }else{if(prod(dim(data$Y)) > 3000){cat('', iter)}}
-  }
-  cat(' /', iter, ':', elboPath[iter], diff, '\n')
-  pred <- NuMuA(data=data, mStep=mStep, eStep=eStep)
-  pred$Yhat <- eStep$xi * pred$A
-  elboPath <- elboPath[1:iter]
-  return(list(mStep=mStep, eStep=eStep, pred=pred, iter=iter, elboPath=elboPath, elbo=elboPath[iter]))
 }
 
