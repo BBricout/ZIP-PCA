@@ -17,9 +17,9 @@ print(c(dim(Y), dim(X)))
 year <- as.numeric(gsub('X', '', colnames(Y)))
 Omega <- 1*(!is.na(Y)); Y[which(Omega==0)] <- 0
 
-# Removing observations
-obs <- 0.5; dataName <- paste0(dataName, '-obs', round(100*obs))
-Omega <- matrix(rbinom(prod(dim(Y)), 1, obs), nrow(Y), ncol(Y)); Y[which(Omega==0)] <- 0
+# # Removing observations
+# obs <- 0.5; dataName <- paste0(dataName, '-obs', round(100*obs))
+# Omega <- matrix(rbinom(prod(dim(Y)), 1, obs), nrow(Y), ncol(Y)); Y[which(Omega==0)] <- 0
 
 # Scaling covariates
 Xmean <- colMeans(X); Xsd <- apply(X, 2, sd)
@@ -31,7 +31,7 @@ save(data, file=paste0(dataDir, dataName, '.Rdata'))
 
 # Parms
 qList <- 1:ncol(data$Y); qNb <- length(qList)
-# qList <- 1:10;  qNb <- length(qList)
+qList <- 1:12;  qNb <- length(qList)
 
 # Fit
 for(qq in 1:qNb){
@@ -51,6 +51,8 @@ n <- nrow(data$Y); p <- ncol(data$Y); d <- ncol(data$X)
 vemList <- list()
 for(qq in 1:qNb){load(paste0(resDir, dataName, '-ZiPLN-q', qList[qq], '.Rdata'))
   vemList[[qq]] <- vem}
+iter <- sapply(1:qNb, function(qq){vemList[[qq]]$iter})
+diff <- sapply(1:qNb, function(qq){vemList[[qq]]$diff})
 elbo <- sapply(1:qNb, function(qq){vemList[[qq]]$elbo})
 penBic <- (2*d + choose(p, 2) - choose(qList-1, 2))*log(n)/2
 bic <- elbo - penBic
@@ -62,6 +64,18 @@ icl <- bic - ent
 plot(qList, elbo, type='b', ylim=quantile(c(elbo, bic, icl), prob=c(.1, 1)))
 points(qList, bic, type='b', col=2)
 points(qList, icl, type='b', col=4)
+abline(v=qList[which.max(bic)], col=2, lty=2)
+abline(v=qList[which.max(icl)], col=4, lty=2)
+
+# Results
+qq <- qList[which.max(icl)]
+jkName <- paste0(dataName, '-ZiPLN-q', qList[qq], '-jackknife')
+jkFile <- paste0(resDir, jkName, '.Rdata')
+if(!file.exists(jkFile)){
+  print(jkFile)
+  jk <- JackknifeZiPLN(data=data, fit=vemList[[qq]])
+  save(jk, file=jkFile)
+}
 
 # Preds
 for(qq in 1:qNb){
@@ -79,17 +93,23 @@ for(qq in 1:qNb){load(paste0(resDir, dataName, '-ZiPLN-q', qList[qq], '-pred.Rda
   predList[[qq]] <- pred}
 # par(mfrow=c(4, 3))
 # for(qq in 1:qNb){
-#   plot(1+data$Y, 1+predList[[qq]]$marg$esp, log='xy', 
-#        xlab='observed', ylab='predicted', main=paste0('marginal q=', qList[qq]), 
+#   plot(1+predList[[qq]]$marg$esp, 1+data$Y, log='xy', 
+#        xlab='predicted', ylab='observed', main=paste0('marginal q=', qList[qq]), 
 #        col=1+(predList[[qq]]$marg$pi < 0.5)); abline(0, 1)
 # }
-par(mfrow=c(4, 3))
+par(mfrow=c(4, 4))
 for(qq in 1:qNb){
-  plot(1+data$Y, 1+predList[[qq]]$cond$esp, log='xy', 
-       xlab='observed', ylab='predicted', main=paste0('conditional q=', qList[qq]), 
+  plot(predList[[qq]]$cond$pi, predList[[qq]]$cond$lambda, log='y', 
+       xlab='pi', ylab='lambda', main=paste0('conditional q=', qList[qq]), 
+       col=1+(predList[[qq]]$cond$pi < 0.5))
+}
+par(mfrow=c(4, 4))
+for(qq in 1:qNb){
+  plot(1+predList[[qq]]$cond$esp, 1+data$Y, log='xy', 
+       xlab='predicted', ylab='observed', main=paste0('conditional q=', qList[qq]), 
        col=1+(predList[[qq]]$cond$pi < 0.5)); abline(0, 1)
 }
-par(mfrow=c(4, 3))
+par(mfrow=c(4, 4))
 for(qq in 1:qNb){
   plot(1+predList[[qq]]$cond$esp, 1+data$Y, log='xy', 
        xlab='predicted', ylab='observed', main=paste0('conditional q=', qList[qq]), 
