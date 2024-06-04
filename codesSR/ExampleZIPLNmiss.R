@@ -9,7 +9,7 @@ resDir <- '../results/'
 
 # Data
 dataName <- 'Souchet'
-dataName <- 'Colvert'
+# dataName <- 'Colvert'
 X <- as.matrix(read.csv(paste0(dataDir, dataName, '_covariate.csv'), sep=',', header=TRUE))
 Y <- as.matrix(read.csv(paste0(dataDir, dataName, '_count.csv'), sep=',', header=TRUE))
 X <- X[, -1]; site <- Y[, 1]; Y <- Y[, -1]
@@ -31,7 +31,7 @@ save(data, file=paste0(dataDir, dataName, '.Rdata'))
 
 # Parms
 qList <- 1:ncol(data$Y); qNb <- length(qList)
-qList <- 1:12;  qNb <- length(qList)
+qList <- 1:4;  qNb <- length(qList)
 
 # Fit
 for(qq in 1:qNb){
@@ -67,15 +67,15 @@ points(qList, icl, type='b', col=4)
 abline(v=qList[which.max(bic)], col=2, lty=2)
 abline(v=qList[which.max(icl)], col=4, lty=2)
 
-# Results
-qq <- qList[which.max(icl)]
-jkName <- paste0(dataName, '-ZiPLN-q', qList[qq], '-jackknife')
-jkFile <- paste0(resDir, jkName, '.Rdata')
-if(!file.exists(jkFile)){
-  print(jkFile)
-  jk <- JackknifeZiPLN(data=data, fit=vemList[[qq]])
-  save(jk, file=jkFile)
-}
+# # Results
+# qq <- qList[which.max(icl)]
+# jkName <- paste0(dataName, '-ZiPLN-q', qList[qq], '-jackknife')
+# jkFile <- paste0(resDir, jkName, '.Rdata')
+# if(!file.exists(jkFile)){
+#   print(jkFile)
+#   jk <- JackknifeZiPLN(data=data, fit=vemList[[qq]])
+#   save(jk, file=jkFile)
+# }
 
 # Preds
 for(qq in 1:qNb){

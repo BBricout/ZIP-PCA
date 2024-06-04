@@ -144,7 +144,7 @@ VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-4){
   # S <- t(sapply(1:n, function(i){
   #   datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], 
   #                 Omegai=data$Omega[i, ], logFactYi=data$logFactY[i, ])
-  #   eStepi <- list(xii=eStep$xi[i, ], mi=eStep$M[i, ], Si=eStep$S[i, ])
+  #   eStepi <- list(xii=eStep$xi[i, ], mi=eStep$M[i, ], Si=NULL)
   #   optim(par=eStepi$Si, fn=ElboSi, gr=ElboGradSi, 
   #         datai=datai, mStep=mStep, eStepi=eStepi, 
   #         method='L-BFGS-B', control=list(fnscale=-1), lower=rep(tolS, q))$par
@@ -283,10 +283,9 @@ PredZiPLN <- function(data, fit){
   sigma <- fit$mStep$C %*% t(fit$mStep$C)
   nuMuA <-NuMuA(data=data, mStep=fit$mStep, eStep=fit$eStep)
   condNu <- margNu <- nuMuA$nu
-  condPi <- margPi <- plogis(nuMuA$nu)
-  margLambda <- exp(nuMuA$nu + rep(1, n)%o%diag(sigma)/2)
+  condPi <- margPi <- plogis(condNu)
+  margLambda <- exp(nuMuA$mu + rep(1, n)%o%diag(sigma)/2)
   condLambda <- nuMuA$A
-  nuMuA <-NuMuA(data=data, mStep=fit$mStep, eStep=fit$eStep)
   margEsp <- margPi*margLambda
   margVar <- margEsp + margPi*(1-margPi)*margLambda^2
   condEsp <- condPi*condLambda
