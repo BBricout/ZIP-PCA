@@ -83,6 +83,7 @@ ElboMi <- function(mi, datai, mStep, eStepi){
   ELBOi(datai=datai, mStep=mStep, eStepi=eStepi)
 }
 ElboGradMi <- function(mi, datai, mStep, eStepi){
+  eStepi$mi <- mi
   mui <- as.vector(datai$Xi%*%mStep$beta)
   # Ai <- exp(mui + mi%*%t(mStep$C) + 0.5*diag(mStep$C%*%diag(eStepi$Si)%*%t(mStep$C)))
   if(length(mi)==1){
@@ -97,6 +98,7 @@ ElboSi <- function(Si, datai, mStep, eStepi){
   ELBOi(datai=datai, mStep=mStep, eStepi=eStepi)
 }
 ElboGradSi <- function(Si, datai, mStep, eStepi){
+  eStepi$Si <- Si
   mui <- as.vector(datai$Xi%*%mStep$beta)
   # Ai <- exp(mui + eStepi$mi%*%t(mStep$C) + 0.5*diag(mStep$C%*%diag(Si)%*%t(mStep$C)))
   if(length(Si)==1){
@@ -175,6 +177,7 @@ ElboGamma <- function(gamma, data, mStep, eStep){
   ELBO(data=data, mStep=mStep, eStep=eStep)
 }
 ElboGradGamma <- function(gamma, data, mStep, eStep){
+  mStep$gamma <- gamma
   nu <- matrix(data$X%*%gamma, nrow(data$Y), ncol(data$Y))
   probU <- plogis(nu)
   as.vector(t(data$X)%*%as.vector(eStep$xi - probU))
@@ -184,6 +187,7 @@ ElboBeta <- function(beta, data, mStep, eStep){
   ELBO(data=data, mStep=mStep, eStep=eStep)
 }
 ElboGradBeta <- function(beta, data, mStep, eStep){
+  mStep$beta <- beta
   as.vector(t(data$X) %*% as.vector(data$Omega * eStep$xi * 
                                       (data$Y - NuMuA(data=data, mStep=mStep, eStep=eStep)$A)))
 }

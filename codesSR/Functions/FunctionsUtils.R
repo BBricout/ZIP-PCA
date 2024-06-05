@@ -1,3 +1,28 @@
+################################################################################
+# Reshape
+Mstep2Theta <- function(mStep, n, d, p, q){
+  as.vector(c(mStep$gamma, mStep$beta, as.vector(mStep$C)))
+}
+Theta2Mstep <- function(theta, n, d, p, q){
+  list(gamma=theta[1:d], beta=theta[d+(1:d)], C=matrix(theta[2*d+(1:(p*q))], p, q))
+}
+Estep2Psi <- function(eStep, n, d, p, q){
+  as.vector(c(as.vector(eStep$M), as.vector(eStep$S)))
+}
+Psi2Estep <- function(psi, n, d, p, q){
+  list(M=matrix(psi[(1:(n*q))], n, q, byrow=TRUE), 
+       S=matrix(psi[(n*q) + (1:(n*q))], n, q, byrow=TRUE))
+}
+ComputeXi <- function(data, mStep, eStep, tolXi=1e-4){
+  nuMuA <- NuMuA(data=data, mStep=mStep, eStep=eStep)
+  xi <- plogis(nuMuA$nu - data$Omega*nuMuA$A)
+  xi <- (xi + tolXi) / (1 + 2*tolXi)
+  xi[which(data$Omega*data$Y>0)] <- 1
+  return(xi)
+}
+
+################################################################################
+# Simul
 SimZiPLN <- function(n, p, d, q, beta0=2, X=NULL){
   if(is.null(X)){X <- matrix(rnorm(n*p*d), n*p, d); X[, 1] <- 1}
   ij <- cbind(rep(1:n, p), rep(1:p, each=n))

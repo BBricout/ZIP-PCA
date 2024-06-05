@@ -2,21 +2,22 @@
 
 rm(list=ls()); par(mfrow=c(1, 1), pch=20); palette('R3')
 library(bizicount); library(pscl)
-source('Functions/FunctionsZIP.R')
 source('Functions/FunctionsUtils.R')
+source('Functions/FunctionsZIP.R')
 source('Functions/FunctionsZIPLNmiss.R')
+source('Functions/FunctionsZIPLNmissVec.R')
 dataDir <- '../data/'
-resDir <- '../resultsSR/'
+resDir <- '../resultsSRvec/'
 
 # Data
 dataName <- 'Souchet'
-dataName <- 'Colvert'
-obs <- 0.5; dataName <- paste0(dataName, '-obs', round(100*obs))
+# dataName <- 'Colvert'
+# obs <- 0.5; dataName <- paste0(dataName, '-obs', round(100*obs))
 load(paste0(dataDir, dataName, '.Rdata'))
 
 # Parms
 qList <- 1:ncol(data$Y); qNb <- length(qList)
-qList <- 1:15;  qNb <- length(qList)
+# qList <- 1:15;  qNb <- length(qList)
 
 # Fit
 for(qq in 1:qNb){
@@ -26,7 +27,7 @@ for(qq in 1:qNb){
   if(!file.exists(fitFile)){
     print(fitFile)
     init <- InitZiPLN(data, q)
-    vem <- VemZiPLN(data=data, init=init, iterMax=5e3)
+    vem <- VemZiPLNvec(data=data, init=init, iterMax=5e3)
     save(init, vem, file=fitFile)
   }
 }

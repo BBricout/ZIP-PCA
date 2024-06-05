@@ -4,8 +4,9 @@ rm(list=ls()); par(mfrow=c(1, 1), pch=20); palette('R3')
 library(bizicount); library(pscl)
 source('Functions/FunctionsZIP.R')
 source('Functions/FunctionsZIPLNmiss.R')
+source('Functions/FunctionsZIPLNmissVec.R')
 dataDir <- '../data/'
-resDir <- '../results/'
+resDir <- '../resultsSR/'
 
 # Data
 dataFull <- 'Colvert'; obs <- 0.5
@@ -33,6 +34,7 @@ qList <- 1:15;  qNb <- length(qList)
 n <- nrow(data$Y); p <- ncol(data$Y); d <- ncol(data$X)
 vemList <- list()
 for(qq in 1:qNb){load(paste0(resDir, dataName, '-ZiPLN-q', qList[qq], '.Rdata'))
+  vem$eStep$xi <- ComputeXi(data=data, mStep=vem$mStep, eStep=vem$eStep)
   vemList[[qq]] <- vem}
 iter <- sapply(1:qNb, function(qq){vemList[[qq]]$iter})
 diff <- sapply(1:qNb, function(qq){vemList[[qq]]$diff})
@@ -41,8 +43,8 @@ penBic <- (2*d + choose(p, 2) - choose(qList-1, 2))*log(n)/2
 bic <- elbo - penBic
 ent <- 0.5*(sapply(1:qNb, function(qq){
   n*qList[qq]+log(2*pi*exp(1)) + sum(log(vemList[[qList[qq]]]$eStep$S))}))
-0.5*(sapply(1:qNb, function(qq){n*qList[qq]+log(2*pi*exp(1))}))
-0.5*(sapply(1:qNb, function(qq){sum(log(vemList[[qList[qq]]]$eStep$S))}))
+ent <- ent - sapply(1:qNb, function(qq){
+  xi <- vemList[[qList[qq]]]$eStep$xi; sum(xi*log(xi + (xi==0)) + (1 - xi)*log(1 - xi + (xi==1)))})
 icl <- bic - ent
 plot(qList, elbo, type='b', ylim=quantile(c(elbo, bic, icl), prob=c(.1, 1)))
 points(qList, bic, type='b', col=2)
