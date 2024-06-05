@@ -5,9 +5,11 @@ library(bizicount); library(pscl)
 source('Functions/FunctionsUtils.R')
 source('Functions/FunctionsZIP.R')
 source('Functions/FunctionsZIPLNmiss.R')
+source('Functions/FunctionsZIPLNpost.R')
 source('Functions/FunctionsZIPLNmissVec.R')
 dataDir <- '../data/'
-resDir <- '../resultsSRvec/'
+resDir <- '../resultsSR/'
+vecDir <- '../resultsSRvec/'
 
 # Data
 dataName <- 'Souchet'
@@ -17,15 +19,15 @@ load(paste0(dataDir, dataName, '.Rdata'))
 
 # Parms
 qList <- 1:ncol(data$Y); qNb <- length(qList)
-# qList <- 1:15;  qNb <- length(qList)
+qList <- 1:10;  qNb <- length(qList)
 
-# Attemps of direct fit
+# Attempt of direct fit
 n <- nrow(data$Y); d <- ncol(data$X); p <- ncol(data$Y)
 tolS <- 1e-4; iterMax <- 1e4
 for(qq in 1:qNb){
   q <- qList[qq]
   fitName <- paste0(dataName, '-ZiPLN-q', q)
-  fitFile <- paste0(resDir, fitName, '-fullVec.Rdata')
+  fitFile <- paste0(vecDir, fitName, '-fullVec.Rdata')
   if(!file.exists(fitFile)){
     print(fitFile)
     init <- InitZiPLN(data, q)
@@ -38,35 +40,37 @@ for(qq in 1:qNb){
   }
 }
 
-# Fit
+# Reshape direct fit into VEM output
 for(qq in 1:qNb){
   q <- qList[qq]
   fitName <- paste0(dataName, '-ZiPLN-q', q)
-  fitFile <- paste0(resDir, fitName, '.Rdata')
-  if(!file.exists(fitFile)){
+  fitFile <- paste0(vecDir, fitName, '-fullVec.Rdata')
+  vemFile <- paste0(resDir, fitName, '-vec.Rdata')
+  if(file.exists(fitFile)){
     print(fitFile)
-    init <- InitZiPLN(data, q)
-    vem <- VemZiPLNvec(data=data, init=init, iterMax=5e3)
-    save(init, vem, file=fitFile)
+    load(fitFile)
+    theta <- fit$par[1:((2*d)+ (p*q))]; 
+    fit$mStep <- Theta2Mstep(theta, n=n, d=d, p=p, q=q)
+    psi <- fit$par[-(1:((2*d)+ (p*q)))]; 
+    fit$eStep <- Psi2Estep(psi, n=n, d=d, p=p, q=q)
+    fit$eStep$xi <- ComputeXi(data=data, mStep=fit$mStep, eStep=fit$eStep)
+    fit$pred <- NuMuA(data=data, mStep=fit$mStep, eStep=fit$eStep)
+    fit$iter <- fit$counts[1]
+    fit$elbo <- fit$elboPath <- fit$value
+    save(fit, file=vemFile)
   }
 }
 
 # Results
 n <- nrow(data$Y); p <- ncol(data$Y); d <- ncol(data$X)
 vemList <- list()
-for(qq in 1:qNb){load(paste0(resDir, dataName, '-ZiPLN-q', qList[qq], '.Rdata'))
-  vem$eStep$xi <- ComputeXi(data=data, mStep=vem$mStep, eStep=vem$eStep)
-  vemList[[qq]] <- vem}
-iter <- sapply(1:qNb, function(qq){vemList[[qq]]$iter})
-diff <- sapply(1:qNb, function(qq){vemList[[qq]]$diff})
-elbo <- sapply(1:qNb, function(qq){vemList[[qq]]$elbo})
-penBic <- (2*d + choose(p, 2) - choose(qList-1, 2))*log(n)/2
-bic <- elbo - penBic
-ent <- 0.5*(sapply(1:qNb, function(qq){
-  n*qList[qq]+log(2*pi*exp(1)) + sum(log(vemList[[qList[qq]]]$eStep$S))}))
-ent <- ent - sapply(1:qNb, function(qq){
-  xi <- vemList[[qList[qq]]]$eStep$xi; sum(xi*log(xi + (xi==0)) + (1 - xi)*log(1 - xi + (xi==1)))})
-icl <- bic - ent
+for(qq in 1:qNb){load(paste0(resDir, dataName, '-ZiPLN-q', qList[qq], '-vec.Rdata'))
+  fit$eStep$xi <- ComputeXi(data=data, mStep=fit$mStep, eStep=fit$eStep)
+  vemList[[qq]] <- fit}
+critList <- lapply(vemList, function(vem){Criteria(data=data, fit=vem)})
+elbo <- unlist(lapply(critList, function(crit){crit$elbo}))
+bic <- unlist(lapply(critList, function(crit){crit$bic}))
+icl <- unlist(lapply(critList, function(crit){crit$icl}))
 plot(qList, elbo, type='b', ylim=quantile(c(elbo, bic, icl), prob=c(.1, 1)))
 points(qList, bic, type='b', col=2)
 points(qList, icl, type='b', col=4)
