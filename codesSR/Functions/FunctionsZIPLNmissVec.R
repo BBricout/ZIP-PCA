@@ -91,13 +91,13 @@ VemZiPLNvec <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4
     # thetaNew <- fit$par[1:((2*d)+(p*q))]; psiNew <- fit$par[-(1:((2*d)+(p*q)))]
     # VE
     fitVE <- optim(par=psi, fn=ElboVecPsi, gr=ElboGradVecPsi, data=data, mStep=mStep,
-                   method='L-BFGS-B', control=list(fnscale=-1),
+                   method='L-BFGS-B', control=list(fnscale=-1, maxit=iterMax),
                    lower=c(rep(-Inf, (n*q)), rep(tolS, (n*q))))
     psiNew <- fitVE$par; eStepNew <- Psi2Estep(psiNew, n=n, d=d, p=p, q=q)
     eStepNew$xi <- ComputeXi(data=data, mStep=mStep, eStep=eStepNew, tolXi=tolXi)
     # M
     fitM <- optim(par=theta, fn=ElboVecTheta, gr=ElboGradVecTheta, data=data, eStep=eStepNew, 
-                  method='BFGS', control=list(fnscale=-1))
+                  method='BFGS', control=list(fnscale=-1), maxit=iterMax)
     thetaNew <- fitM$par; mStepNew <- Theta2Mstep(thetaNew, n=n, d=d, p=p, q=q)
     #   
     elboPath[iter] <- ElboVecThetaPsi(thetaPsi=c(thetaNew, psiNew), data=data, q=q)

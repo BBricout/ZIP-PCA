@@ -11,13 +11,32 @@ resDir <- '../resultsSRvec/'
 
 # Data
 dataName <- 'Souchet'
-# dataName <- 'Colvert'
-# obs <- 0.5; dataName <- paste0(dataName, '-obs', round(100*obs))
+dataName <- 'Colvert'
+obs <- 0.5; dataName <- paste0(dataName, '-obs', round(100*obs))
 load(paste0(dataDir, dataName, '.Rdata'))
 
 # Parms
 qList <- 1:ncol(data$Y); qNb <- length(qList)
 # qList <- 1:15;  qNb <- length(qList)
+
+# Attemps of direct fit
+n <- nrow(data$Y); d <- ncol(data$X); p <- ncol(data$Y)
+tolS <- 1e-4; iterMax <- 1e4
+for(qq in 1:qNb){
+  q <- qList[qq]
+  fitName <- paste0(dataName, '-ZiPLN-q', q)
+  fitFile <- paste0(resDir, fitName, '-fullVec.Rdata')
+  if(!file.exists(fitFile)){
+    print(fitFile)
+    init <- InitZiPLN(data, q)
+    mStep <- init$mStep; theta <- Mstep2Theta(mStep, n=n, d=d, p=p, q=q)
+    eStep <- init$eStep; psi <- Estep2Psi(eStep, n=n, d=d, p=p, q=q)
+    fit <- optim(par=c(theta, psi), fn=ElboVecThetaPsi, gr=ElboGradVecThetaPsi, data=data,
+                 q=q, method='L-BFGS-B', control=list(fnscale=-1, trace=2, maxit=iterMax),
+                 lower=c(rep(-Inf, ((2*d) + (p*q) + (n*q))), rep(tolS, (n*q))))
+    save(init, fit, file=fitFile)
+  }
+}
 
 # Fit
 for(qq in 1:qNb){
