@@ -9,42 +9,7 @@
 #include "packing.h"
 #include "utils.h"
 
-//----------------------------------------------------------------------------------------
-// From matrix to vector
 
-// [[Rcpp::export]]
-Rcpp::NumericVector MatrixToVector(const arma::mat & matrix) {
-    int n = matrix.n_rows;
-    int p = matrix.n_cols;
-
-    // Check if the input matrix is not empty
-    if (n == 0 || p == 0) {
-        Rcpp::stop("Input matrix is empty");
-    }
-
-    // Reshape the matrix into a column vector
-    arma::vec vectorized = arma::vectorise(matrix);
-
-    // Convert the Armadillo vector to an Rcpp numeric vector
-    Rcpp::NumericVector result(vectorized.begin(), vectorized.end());
-
-    return result;
-}
-
-// From vector to matrix
-
-// [[Rcpp::export]]
-
-// Function to convert an arma::vec to an Rcpp NumericMatrix
-Rcpp::NumericMatrix VectorToMatrix(const arma::vec & vector, int n, int p) {
-  // Create an arma::mat with the specified dimensions
-  arma::mat matrix = arma::reshape(vector, n, p);
-  
-  // Convert the arma::mat to an Rcpp NumericMatrix
-   Rcpp::NumericMatrix result(n, p, matrix.memptr()); 
-  
-  return result;
-}
 	
 
 

@@ -20,11 +20,10 @@ p <- 30
 d <- 2
 q <- 3
 
-
 X <- cbind(c(rep(1, n*p)), matrix(rnorm(n*p*d), nrow = n*p))
 
 B <- c(2, 1, 0.5)
-D <- c(-0.5, 0.5, -0.7)
+D <- c(0.5, -0.5, -0.7)
 
 mu <- VectorToMatrix(X%*%B, n, p)
 nu <- VectorToMatrix(X%*%D, n, p)

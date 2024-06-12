@@ -79,6 +79,26 @@ arma::mat ifelse_mat(const arma::mat& Y, const arma::mat& A, const arma::mat& nu
    return E;
 }
 
+arma::mat ifelse_exp(const arma::mat& nu){
+    int n = nu.n_rows;
+    int p = nu.n_cols;
+    
+    arma::Mat<double> F(n, p, arma::fill::none); 
+    
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < p; ++j) {
+            if (nu(i,j) <= 0) {
+                F(i,j) = log(exp(nu(i,j)) + 1);
+            } else {
+                F(i,j) = log((1 + exp(-nu(i,j)))/exp(-nu(i,j)));
+            }
+        }
+    }
+   
+   return F;
+}
+
+
 double entropie_logis(arma::mat & xi){
    
     int n = xi.n_rows;
@@ -166,7 +186,7 @@ Rcpp::List nlopt_optimize_ZIP(
         const arma::mat S = metadata.map<S_ID>(params);
         
 
-        //std::cout << M(0,0) << std::endl;
+        
         
 	
 	int n = Y.n_rows;
@@ -188,10 +208,11 @@ Rcpp::List nlopt_optimize_ZIP(
     	arma::mat E = ifelse_mat(Y, A, nu, R);
         arma::mat xi = 1/(1 + exp(-E));
         arma::vec vecxi = vectorise(xi);
-
+	
+	//std::cout << nu.max() << std::endl;
         
         
-        double objective = -(accu(xi % nu - log((1 + exp(-nu))/exp(-nu))) + accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y)) - 1/2 * accu(M%M + S - log(S)) + entropie_logis(xi) + n*q/2);
+        double objective = -(accu(xi % nu - ifelse_exp(nu)) + accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y)) - 1/2 * accu(M%M + S - log(S)) + entropie_logis(xi) + n*q/2);
         objective_values.push_back(objective);
         
 
