@@ -89,7 +89,10 @@ ELBO <- function(data, mStep, eStep){
 ELBOSophiei <- function(datai, mStep, eStepi){
   nui <- as.vector(datai$Xi%*%mStep$gamma)
   mui <- as.vector(datai$Xi%*%mStep$beta)
-  Ai <- exp(mui + as.vector(mStep$C%*%eStepi$mi) + 0.5*diag(mStep$C%*%diag(eStepi$Si)%*%t(mStep$C)))
+  Zi <- mui + as.vector(mStep$C%*%eStepi$mi)
+  q <- dim(mStep$C)[2]
+  p <- dim(mStep$C)[1]
+  Ai <- exp(Zi + 0.5*diag(mStep$C%*%diag(eStepi$Si,q,q)%*%t(mStep$C)))
   S1i <- sum(nui*eStepi$xii - log(1 + exp(nui)))
   S2i <- - 0.5*(sum(eStepi$mi^2) + sum(eStepi$Si))
   S3i <- sum(eStepi$xii * (-Ai + datai$Yi*(mui + mStep$C%*%eStepi$mi) - datai$logFactYi))
