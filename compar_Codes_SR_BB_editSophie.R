@@ -7,6 +7,7 @@ library(PLNmodels)
 # seed <- .Random.seed
 source('codesSR/Functions/FunctionsUtils.R')
 source('codesSR/Functions/FunctionsZIPLN.R')
+
 source('codesSR/Functions/FunctionsZIP.R')
 source("FunctionsBB.R")
 simDir <- 'SimulationsBB/datasim/'
@@ -55,36 +56,6 @@ for(seed in 1:10){
 
 
 
-
-# Fit de Stephane
-start_time <- Sys.time()
-for(seed in 1:1){
-    simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
-    simNameFull <- paste0(baseSimName, simParmsFull)
-    simFileFull <- paste0(simDir, simNameFull, '-noMiss.Rdata')
-    load(file=simFileFull)
-    
-    
-    ################ ajustement SR
-    init <- InitZiPLN(data) #! Fichiers différnets pour miss et pas miss
-    vem <- VemZiPLN(data=data, init=init, iterMax=5e3)
-    # save(init, vem, file=fitFile)
-    ################ ajustement BB
-    
-    for(oo in 1:obsNb){
-        obs <- obsList[oo]
-        simParms <- paste0(simParmsFull, '-obs', 100*obs)
-        simName <- paste0(baseSimName, simParms)
-        simFile <- paste0(simDir, simName, '.Rdata')
-      ################ ajustement SR
-       
-        
-    }
-    }
-
-end_time <- Sys.time()
-execution_time_real <- end_time - start_time
-
 #############################################################
 # Fit de Barbara
 
@@ -107,21 +78,13 @@ outB <- Miss.ZIPPCA(data$Y, data$X, q, params = params)
 end_timeB <- Sys.time()
 execution_time_realB <- end_timeB - start_timeB
 
-plot(log(1 + data$Y[data$Y != 0]), log(1 + vem$pred$A[data$Y != 0])) ; abline(0,1)
-plot(log(1 + data$Y[data$Y != 0]), log(1 + outB$pred$A[data$Y != 0])) ; abline(0,1)
-plot(log(1 + vem$pred$A[data$Y != 0]), log(1 + outB$pred$A[data$Y != 0])) ; abline(0,1)
+data = data
+mStep = outB$mStep 
+eStep = outB$eStep
+#ElboSfun <- ELBO(data = data, mStep = outB$mStep, eStep = outB$eStep)
 
-
-boxplot(vem$pred$nu[data$Y == 0], vem$pred$nu[data$Y != 0])
-
-boxplot(outB$pred$nu[data$Y == 0], outB$pred$nu[data$Y != 0])
-
-source("codesSR/Functions/FunctionsZIPLN.R")
-
-
-ElboSfun <- ELBO(data = data, mStep = outB$mStep, eStep = outB$eStep)
-
-
+ElboSfun <- ELBOSophie(data = data, mStep = outB$mStep, eStep = outB$eStep)
+ElboSfun[6]
 
 
 

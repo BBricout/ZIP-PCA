@@ -66,8 +66,8 @@ Miss.ZIPPCA <- function(Y, # Table de comptages n*p qui peut contenir des donné
   nu <- VectorToMatrix(X%*%out$D, n, p)
   
   mStep <- list(gamma = out$D, beta = out$B, C = out$C)
-  eStep <- list(M = out$M, S = out$S)
-  pred <- list(A = out$A, xi = out$xi, nu = nu, mu = mu)
+  eStep <- list(M = out$M, S = out$S,  xi = out$xi)
+  pred <- list(A = out$A, nu = nu, mu = mu)
   iter <- out$monitoring$iterations
   elboPath <- out$objective_values
   elbo <- out$objective_values[length(out$objective_values)]

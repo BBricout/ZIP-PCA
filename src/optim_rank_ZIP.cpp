@@ -218,7 +218,7 @@ Rcpp::List nlopt_optimize_ZIP(
 
         metadata.map<B_ID>(grad) = - X.t() *  (vecR % vecxi % (vecY - vecA)) ;
         metadata.map<D_ID>(grad) = - X.t() *  (vecR % (vecxi - vecpi)) ;
-	metadata.map<C_ID>(grad) = -((R % xi % (Y -A)).t() * M - (R % xi % A).t() * S % C);
+	      metadata.map<C_ID>(grad) = -((R % xi % (Y -A)).t() * M - (R % xi % A).t() * S % C);
         metadata.map<M_ID>(grad) = - (R % xi % (Y - A) * C - M);
         metadata.map<S_ID>(grad) =  - 1/2 * (1/S - 1. - R % xi % A * (C%C));
 
@@ -233,7 +233,7 @@ Rcpp::List nlopt_optimize_ZIP(
     arma::mat M = metadata.copy<M_ID>(parameters.data());
     arma::mat S = metadata.copy<S_ID>(parameters.data());
     
-    	int n = Y.n_rows;
+  int n = Y.n_rows;
 	int p = Y.n_cols;
 	int q = M.n_cols;
 	arma::vec XB = X * B;
@@ -249,7 +249,7 @@ Rcpp::List nlopt_optimize_ZIP(
         arma::mat log_fact_Y = log_factorial_matrix(Y);
         arma::mat pi = 1/(1 + exp(-nu));
         arma::vec vecpi = vectorise(pi);
-    	arma::mat E = ifelse_mat(Y, A, nu, R);
+    	  arma::mat E = ifelse_mat(Y, A, nu, R);
         arma::mat xi = 1/(1 + exp(-E));
         arma::vec vecxi = vectorise(xi);
   

@@ -46,13 +46,13 @@ ELBOi <- function(datai, mStep, eStepi){
   nui <- as.vector(datai$Xi%*%mStep$gamma)
   mui <- as.vector(datai$Xi%*%mStep$beta)
   Ai <- exp(mui + as.vector(mStep$C%*%eStepi$mi) + 0.5*diag(mStep$C%*%diag(eStepi$Si)%*%t(mStep$C)))
-  elboi <- sum(nui*eStepi$xii - log(1 + exp(nui)))
-  elboi <- elboi - 0.5*(sum(eStepi$mi^2) + sum(eStepi$Si))
-  elboi <- elboi + sum(eStepi$xii * (-Ai + datai$Yi*(mui + mStep$C%*%eStepi$mi) - datai$logFactYi))
+  elboi <- sum(nui*eStepi$xii - log(1 + exp(nui))) # 0K 
+  elboi <- elboi - 0.5*(sum(eStepi$mi^2) + sum(eStepi$Si)) #OK 
+  elboi <- elboi + sum(eStepi$xii * (-Ai + datai$Yi*(mui + mStep$C%*%eStepi$mi) - datai$logFactYi)) # OK 
   # Excludes xii=0 or 1, before computing the entropy
-  xii <- eStepi$xii[which(eStepi$xii*(1-eStepi$xii) > 0)]
-  elboi <- elboi + sum(xii * log(xii/(1 - xii)) + log(1 - xii))
-  elboi <- elboi + 0.5*(length(eStepi$mi) + sum(log(eStepi$Si)))
+  xii <- eStepi$xii[which(eStepi$xii*(1-eStepi$xii) > 0)] # OK 
+  elboi <- elboi + sum(xii * log(xii/(1 - xii)) + log(1 - xii)) # OK 
+  elboi <- elboi + 0.5*(length(eStepi$mi) + sum(log(eStepi$Si))) # OK
   return(elboi)
 }
 ELBO <- function(data, mStep, eStep){
@@ -62,7 +62,52 @@ ELBO <- function(data, mStep, eStep){
     ELBOi(datai=datai, mStep=mStep, eStepi=eStepi)
   }))
 }
-  
+
+
+# ELBO
+ELBOi <- function(datai, mStep, eStepi){
+  nui <- as.vector(datai$Xi%*%mStep$gamma)
+  mui <- as.vector(datai$Xi%*%mStep$beta)
+  Ai <- exp(mui + as.vector(mStep$C%*%eStepi$mi) + 0.5*diag(mStep$C%*%diag(eStepi$Si)%*%t(mStep$C)))
+  elboi <- sum(nui*eStepi$xii - log(1 + exp(nui))) # 0K 
+  elboi <- elboi - 0.5*(sum(eStepi$mi^2) + sum(eStepi$Si)) #OK 
+  elboi <- elboi + sum(eStepi$xii * (-Ai + datai$Yi*(mui + mStep$C%*%eStepi$mi) - datai$logFactYi)) # OK 
+  # Excludes xii=0 or 1, before computing the entropy
+  xii <- eStepi$xii[which(eStepi$xii*(1-eStepi$xii) > 0)] # OK 
+  elboi <- elboi + sum(xii * log(xii/(1 - xii)) + log(1 - xii)) # OK 
+  elboi <- elboi + 0.5*(length(eStepi$mi) + sum(log(eStepi$Si))) # OK
+  return(elboi)
+}
+ELBO <- function(data, mStep, eStep){
+  sum(sapply(1:nrow(data$Y), function(i){
+    datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], logFactYi=data$logFactY[i, ])
+    eStepi <- list(xii=eStep$xi[i, ], mi=eStep$M[i, ], Si=eStep$S[i, ])
+    ELBOi(datai=datai, mStep=mStep, eStepi=eStepi)
+  }))
+}
+
+ELBOSophiei <- function(datai, mStep, eStepi){
+  nui <- as.vector(datai$Xi%*%mStep$gamma)
+  mui <- as.vector(datai$Xi%*%mStep$beta)
+  Ai <- exp(mui + as.vector(mStep$C%*%eStepi$mi) + 0.5*diag(mStep$C%*%diag(eStepi$Si)%*%t(mStep$C)))
+  S1i <- sum(nui*eStepi$xii - log(1 + exp(nui)))
+  S2i <- - 0.5*(sum(eStepi$mi^2) + sum(eStepi$Si))
+  S3i <- sum(eStepi$xii * (-Ai + datai$Yi*(mui + mStep$C%*%eStepi$mi) - datai$logFactYi))
+  xii <- eStepi$xii[which(eStepi$xii*(1-eStepi$xii) > 0)]
+  S4i <- sum(xii * log(xii/(1 - xii)) + log(1 - xii)) 
+  S5i <- 0.5*(length(eStepi$mi) + sum(log(eStepi$Si)))
+  elboi = S1i + S2i + S3i + S4i+ S5i
+  return(c(S1i,S2i,S3i,S4i,S5i,elboi))
+}
+ELBOSophie <- function(data, mStep, eStep){
+  US <- sapply(1:nrow(data$Y), function(i){
+    datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], logFactYi=data$logFactY[i, ])
+    eStepi <- list(xii=eStep$xi[i, ], mi=eStep$M[i, ], Si=eStep$S[i, ])
+    ELBOSophiei(datai=datai, mStep=mStep, eStepi=eStepi)
+  })
+  return(apply(US,1,sum))
+}
+
 ################################################################################
 # VE step
 ElboMi <- function(mi, datai, mStep, eStepi){
