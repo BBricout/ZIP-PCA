@@ -13,13 +13,13 @@ vecDir <- '../resultsSRvec/'
 
 # Data
 dataName <- 'Souchet'
-dataName <- 'Colvert'
+# dataName <- 'Colvert'
 obs <- 0.5; dataName <- paste0(dataName, '-obs', round(100*obs))
 load(paste0(dataDir, dataName, '.Rdata'))
 
 # Parms
 qList <- 1:ncol(data$Y); qNb <- length(qList)
-qList <- 1:10;  qNb <- length(qList)
+# qList <- 1:10;  qNb <- length(qList)
 
 # Attempt of direct fit
 n <- nrow(data$Y); d <- ncol(data$X); p <- ncol(data$Y)

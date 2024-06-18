@@ -9,7 +9,7 @@ resDir <- '../results/'
 
 # Data
 dataName <- 'Souchet'
-dataName <- 'Colvert'
+# dataName <- 'Colvert'
 X <- as.matrix(read.csv(paste0(dataDir, dataName, '_covariate.csv'), sep=',', header=TRUE))
 Y <- as.matrix(read.csv(paste0(dataDir, dataName, '_count.csv'), sep=',', header=TRUE))
 X <- X[, -1]; site <- Y[, 1]; Y <- Y[, -1]
@@ -17,9 +17,9 @@ print(c(dim(Y), dim(X)))
 year <- as.numeric(gsub('X', '', colnames(Y)))
 Omega <- 1*(!is.na(Y)); Y[which(Omega==0)] <- 0
 
-# # Removing observations
-# obs <- 0.5; dataName <- paste0(dataName, '-obs', round(100*obs))
-# Omega <- matrix(rbinom(prod(dim(Y)), 1, obs), nrow(Y), ncol(Y)); Y[which(Omega==0)] <- 0
+# Removing observations
+obs <- 0.5; dataName <- paste0(dataName, '-obs', round(100*obs))
+Omega <- matrix(rbinom(prod(dim(Y)), 1, obs), nrow(Y), ncol(Y)); Y[which(Omega==0)] <- 0
 
 # Scaling covariates
 Xmean <- colMeans(X); Xsd <- apply(X, 2, sd)

@@ -3,6 +3,7 @@
 rm(list=ls()); par(mfrow=c(1, 1), pch=20); palette('R3')
 library(bizicount); library(pscl)
 source('Functions/FunctionsZIP.R')
+source('Functions/FunctionsUtils.R')
 source('Functions/FunctionsZIPLNmiss.R')
 source('Functions/FunctionsZIPLNmissVec.R')
 dataDir <- '../data/'
@@ -100,6 +101,9 @@ for(qq in 1:qNb){
 piMat <- sapply(qList, function(q){predList[[q]]$cond$pi})
 gammaMat <- sapply(qList, function(q){vemList[[q]]$mSte$gamma})
 # plot(as.data.frame(gammaMat))
+
+par(mfrow=c(1, 1))
+qIcl <-
 
 # Conditional moments
 par(mfrow=c(1, 1))
