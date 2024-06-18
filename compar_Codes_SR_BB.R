@@ -100,7 +100,7 @@ dataB <- list(Y = as.matrix(data$Y),
 
 config <- PLNPCA_param()$config_optim
 
-
+source("FunctionsBB.R")
 
 start_timeB <- Sys.time()
 outB <- Miss.ZIPPCA(data$Y, data$X, q, params = params)

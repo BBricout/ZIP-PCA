@@ -118,6 +118,58 @@ double entropie_logis(arma::mat & xi){
      return H ;
 }
 
+Rcpp::List elbo(const Rcpp::List & data  , // List(Y, R, X)
+    	    const Rcpp::List & params // List(B, C, M, S)
+    	    ){
+    	    
+    const arma::mat & Y = Rcpp::as<arma::mat>(data["Y"]); // responses (n,p)
+    const arma::mat & R = Rcpp::as<arma::mat>(data["R"]); // missing data (n,p)
+    const arma::mat & X = Rcpp::as<arma::mat>(data["X"]); // covariates (np,d)
+    const arma::mat & B = Rcpp::as<arma::mat>(params["B"]); // (1,d) régresseurs pour la Poisson
+    const arma::mat & D = Rcpp::as<arma::mat>(params["D"]); // (1,d) régresseurs pour la logistique
+    const arma::mat & C = Rcpp::as<arma::mat>(params["C"]); // (p,q)
+    const arma::mat & M = Rcpp::as<arma::mat>(params["M"]); // (n,q)
+    const arma::mat & S = Rcpp::as<arma::mat>(params["S"]); // (n,q)
+    
+    	int n = Y.n_rows;
+	int p = Y.n_cols;
+	int q = M.n_cols;
+	arma::vec XB = X * B;
+	arma::vec XD = X * D;
+	arma::mat mu = arma::mat(XB.memptr(), n, p, false, false);
+	arma::mat nu = arma::mat(XD.memptr(), n, p, false, false);
+	arma::vec vecY = arma::vectorise(Y);
+	arma::vec vecR = arma::vectorise(R);
+        arma::mat Z =  mu + M * C.t();
+        arma::vec vecZ = arma::vectorise(Z);
+        arma::mat A = exp(Z + 0.5 * S * (C % C).t());
+        arma::vec vecA = vectorise(A);
+        arma::mat log_fact_Y = log_factorial_matrix(Y);
+        arma::mat pi = 1/(1 + exp(-nu));
+        arma::vec vecpi = vectorise(pi);
+    	arma::mat E = ifelse_mat(Y, A, nu, R);
+        arma::mat xi = 1/(1 + exp(-E));
+        arma::vec vecxi = vectorise(xi);
+        
+        double elbo1 = accu(xi % nu - ifelse_exp(nu)) ;
+        double elbo2 =  1/2 * accu(M%M + S - log(S)) ;
+        double elbo3 =  accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y)) ;
+        double elbo4 = entropie_logis(xi) ;
+        double elbo5 = 1/2*accu(-log(S)) + n*q/2 ;
+        
+    
+ 	double objective = (accu(xi % nu - ifelse_exp(nu)) + accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y)) - 1/2 * accu(M%M + S - log(S)) + entropie_logis(xi) + n*q/2);
+ 	
+ 	return Rcpp::List::create(
+		Rcpp::Named("elbo1", elbo1),
+		Rcpp::Named("elbo2", elbo2),
+		Rcpp::Named("elbo3", elbo3),
+		Rcpp::Named("elbo4", elbo4),
+		Rcpp::Named("elbo5", elbo5),
+		Rcpp::Named("objective", objective)
+        ) ;
+}
+
 	
 
 
@@ -218,7 +270,7 @@ Rcpp::List nlopt_optimize_ZIP(
 
         metadata.map<B_ID>(grad) = - X.t() *  (vecR % vecxi % (vecY - vecA)) ;
         metadata.map<D_ID>(grad) = - X.t() *  (vecR % (vecxi - vecpi)) ;
-	      metadata.map<C_ID>(grad) = -((R % xi % (Y -A)).t() * M - (R % xi % A).t() * S % C);
+	metadata.map<C_ID>(grad) = -((R % xi % (Y -A)).t() * M - (R % xi % A).t() * S % C);
         metadata.map<M_ID>(grad) = - (R % xi % (Y - A) * C - M);
         metadata.map<S_ID>(grad) =  - 1/2 * (1/S - 1. - R % xi % A * (C%C));
 
@@ -233,7 +285,7 @@ Rcpp::List nlopt_optimize_ZIP(
     arma::mat M = metadata.copy<M_ID>(parameters.data());
     arma::mat S = metadata.copy<S_ID>(parameters.data());
     
-  int n = Y.n_rows;
+    	int n = Y.n_rows;
 	int p = Y.n_cols;
 	int q = M.n_cols;
 	arma::vec XB = X * B;
@@ -249,7 +301,7 @@ Rcpp::List nlopt_optimize_ZIP(
         arma::mat log_fact_Y = log_factorial_matrix(Y);
         arma::mat pi = 1/(1 + exp(-nu));
         arma::vec vecpi = vectorise(pi);
-    	  arma::mat E = ifelse_mat(Y, A, nu, R);
+    	arma::mat E = ifelse_mat(Y, A, nu, R);
         arma::mat xi = 1/(1 + exp(-E));
         arma::vec vecxi = vectorise(xi);
   
