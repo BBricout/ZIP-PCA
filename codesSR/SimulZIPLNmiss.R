@@ -3,9 +3,9 @@
 rm(list=ls()); par(mfrow=c(1, 1), pch=20); palette('R3')
 
 # seed <- .Random.seed
-source('Functions/FunctionsUtils.R')
-source('Functions/FunctionsZIPLNmiss.R')
-simDir <- '../simulSR/'
+source('codesSR/Functions/FunctionsUtils.R')
+source('codesSR/Functions/FunctionsZIPLNmiss.R')
+simDir <- 'SimBB/'
 
 # Parms: many small sims
 n <- 100; d <- 5; p <- 10; q <- 2
@@ -48,3 +48,4 @@ for(seed in 1:10){
     }
   }
 }
+

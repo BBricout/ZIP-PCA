@@ -1,6 +1,8 @@
 # Sim and fit ZI-PLN
 
 rm(list=ls()); par(mfrow=c(1, 1), pch=20); palette('R3')
+library(Rcpp)
+library(PLNmodels)
 
 # seed <- .Random.seed
 source('codesSR/Functions/FunctionsUtils.R')
@@ -24,38 +26,38 @@ obsList <- c(1, 0.99, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5); obsNb <- length(obsList)
 seedX <- 1; set.seed(seedX)
 #X0 <- matrix(rnorm(n*p*d), n*p, d); X0[, 1] <- 1; 
 baseSimName <- paste0(baseSimName, '-sameX', seedX)
-# 
-# # Simul
-# for(seed in 1:10){
-#   set.seed(seed)
-#   simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
-#   simNameFull <- paste0(baseSimName, simParmsFull)
-#   simFileFull <- paste0(simDir, simNameFull, '-noMiss.Rdata')
-#   if(!file.exists(simFileFull)){
-#     sim <- SimZiPLN(n=n, p=p, d=d, q=q, X=X0)
-#     obsTresh <- matrix(runif(n*p), n, p)
-#     data <- list(X=sim$X, Y=sim$Y, obsTresh=obsTresh, ij=sim$ij, logFactY=lgamma(sim$Y+1))
-#     true <- list(mStep=list(gamma=sim$gamma, beta=sim$beta, C=sim$C), 
-#                  eStep=list(M=sim$W, S=matrix(1e-4, n, q), xi=matrix(plogis(sim$X%*%sim$gamma), n, p)), 
-#                  latent=list(U=sim$U, W=sim$W, Z=sim$Z, Yall=sim$Yall))
-#     save(data, true, file=simFileFull)
-#     for(oo in 1:obsNb){
-#       obs <- obsList[oo]
-#       simParms <- paste0(simParmsFull, '-obs', 100*obs)
-#       simName <- paste0(baseSimName, simParms)
-#       simFile <- paste0(simDir, simName, '.Rdata')
-#       Omega <- 1*(obsTresh <= obs)
-#       data <- list(X=sim$X, Y=sim$Y, Omega=Omega, ij=sim$ij, logFactY=lgamma(sim$Y+1))
-#       save(data, file=simFile)
-#     }
-#   }
-# }
+
+# Simul
+for(seed in 1:10){
+  set.seed(seed)
+  simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
+  simNameFull <- paste0(baseSimName, simParmsFull)
+  simFileFull <- paste0(simDir, simNameFull, '-noMiss.Rdata')
+  if(!file.exists(simFileFull)){
+    sim <- SimZiPLN(n=n, p=p, d=d, q=q, X=X0)
+    obsTresh <- matrix(runif(n*p), n, p)
+    data <- list(X=sim$X, Y=sim$Y, obsTresh=obsTresh, ij=sim$ij, logFactY=lgamma(sim$Y+1))
+    true <- list(mStep=list(gamma=sim$gamma, beta=sim$beta, C=sim$C),
+                 eStep=list(M=sim$W, S=matrix(1e-4, n, q), xi=matrix(plogis(sim$X%*%sim$gamma), n, p)),
+                 latent=list(U=sim$U, W=sim$W, Z=sim$Z, Yall=sim$Yall))
+    save(data, true, file=simFileFull)
+    for(oo in 1:obsNb){
+      obs <- obsList[oo]
+      simParms <- paste0(simParmsFull, '-obs', 100*obs)
+      simName <- paste0(baseSimName, simParms)
+      simFile <- paste0(simDir, simName, '.Rdata')
+      Omega <- 1*(obsTresh <= obs)
+      data <- list(X=sim$X, Y=sim$Y, Omega=Omega, ij=sim$ij, logFactY=lgamma(sim$Y+1))
+      save(data, file=simFile)
+    }
+  }
+}
 
 
 
 
-# Fit
-
+# Fit de Stephane
+start_time <- Sys.time()
 for(seed in 1:1){
     simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
     simNameFull <- paste0(baseSimName, simParmsFull)
@@ -66,7 +68,7 @@ for(seed in 1:1){
     ################ ajustement SR
     init <- InitZiPLN(data) #! Fichiers différnets pour miss et pas miss
     vem <- VemZiPLN(data=data, init=init, iterMax=5e3)
-    save(init, vem, file=fitFile)
+    # save(init, vem, file=fitFile)
     ################ ajustement BB
     
     for(oo in 1:obsNb){
@@ -79,6 +81,56 @@ for(seed in 1:1){
         
     }
     }
+
+end_time <- Sys.time()
+execution_time_real <- end_time - start_time
+
+
+# Fit de Barbara
+
+params <- list(B = as.matrix(init$mStep$beta), 
+               D = as.matrix(init$mStep$gamma), 
+               C = as.matrix(init$mStep$C), 
+               M = as.matrix(init$eStep$M), 
+               S = as.matrix(init$eStep$S))
+
+dataB <- list(Y = as.matrix(data$Y), 
+              R = as.matrix(ifelse(is.na(data$Y), 0, 1)), 
+              X = as.matrix(data$X))
+
+config <- PLNPCA_param()$config_optim
+
+source("FunctionsBB.R")
+
+start_timeB <- Sys.time()
+outB <- Miss.ZIPPCA(data$Y, data$X, q, params = params)
+end_timeB <- Sys.time()
+execution_time_realB <- end_timeB - start_timeB
+
+plot(log(1 + data$Y[data$Y != 0]), log(1 + vem$pred$A[data$Y != 0])) ; abline(0,1)
+plot(log(1 + data$Y[data$Y != 0]), log(1 + outB$pred$A[data$Y != 0])) ; abline(0,1)
+plot(log(1 + vem$pred$A[data$Y != 0]), log(1 + outB$pred$A[data$Y != 0])) ; abline(0,1)
+
+
+boxplot(vem$pred$nu[data$Y == 0], vem$pred$nu[data$Y != 0])
+
+boxplot(outB$pred$nu[data$Y == 0], outB$pred$nu[data$Y != 0])
+
+source("codesSR/Functions/FunctionsZIPLN.R")
+
+
+ElboSfun <- ELBO(data = data, mStep = outB$mStep, eStep = outB$eStep)
+
+
+
+
+
+
+
+
+
+
+
 
 
 
