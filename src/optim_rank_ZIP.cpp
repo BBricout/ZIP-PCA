@@ -118,7 +118,9 @@ double entropie_logis(arma::mat & xi){
      return H ;
 }
 
-Rcpp::List elbo(const Rcpp::List & data  , // List(Y, R, X)
+// [[Rcpp::export]]
+
+Rcpp::List ElboB(const Rcpp::List & data  , // List(Y, R, X)
     	    const Rcpp::List & params // List(B, C, M, S)
     	    ){
     	    
@@ -130,6 +132,10 @@ Rcpp::List elbo(const Rcpp::List & data  , // List(Y, R, X)
     const arma::mat & C = Rcpp::as<arma::mat>(params["C"]); // (p,q)
     const arma::mat & M = Rcpp::as<arma::mat>(params["M"]); // (n,q)
     const arma::mat & S = Rcpp::as<arma::mat>(params["S"]); // (n,q)
+    
+    
+    
+    
     
     	int n = Y.n_rows;
 	int p = Y.n_cols;
@@ -152,13 +158,15 @@ Rcpp::List elbo(const Rcpp::List & data  , // List(Y, R, X)
         arma::vec vecxi = vectorise(xi);
         
         double elbo1 = accu(xi % nu - ifelse_exp(nu)) ;
-        double elbo2 =  1/2 * accu(M%M + S - log(S)) ;
+        double elbo2 =  0.5 * accu(M%M + S) ;
         double elbo3 =  accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y)) ;
         double elbo4 = entropie_logis(xi) ;
-        double elbo5 = 1/2*accu(-log(S)) + n*q/2 ;
+        double elbo5 = 0.5 * accu(log(S)) + n*q*0.5 ;
+        
+        std::cout << 1/(1 + exp(-E))  << std::endl;
         
     
- 	double objective = (accu(xi % nu - ifelse_exp(nu)) + accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y)) - 1/2 * accu(M%M + S - log(S)) + entropie_logis(xi) + n*q/2);
+ 	double objective = (accu(xi % nu - ifelse_exp(nu)) + accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y)) - 0.5 * accu(M%M + S - log(S)) + entropie_logis(xi) + 0.5*n*q);
  	
  	return Rcpp::List::create(
 		Rcpp::Named("elbo1", elbo1),
@@ -264,7 +272,7 @@ Rcpp::List nlopt_optimize_ZIP(
 	//std::cout << nu.max() << std::endl;
         
         
-        double objective = -(accu(xi % nu - ifelse_exp(nu)) + accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y)) - 1/2 * accu(M%M + S - log(S)) + entropie_logis(xi) + n*q/2);
+        double objective = -(accu(xi % nu - ifelse_exp(nu)) + accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y)) - 0.5 * accu(M%M + S - log(S)) + entropie_logis(xi) + n*q*0.5);
         objective_values.push_back(objective);
         
 
@@ -272,7 +280,7 @@ Rcpp::List nlopt_optimize_ZIP(
         metadata.map<D_ID>(grad) = - X.t() *  (vecR % (vecxi - vecpi)) ;
 	metadata.map<C_ID>(grad) = -((R % xi % (Y -A)).t() * M - (R % xi % A).t() * S % C);
         metadata.map<M_ID>(grad) = - (R % xi % (Y - A) * C - M);
-        metadata.map<S_ID>(grad) =  - 1/2 * (1/S - 1. - R % xi % A * (C%C));
+        metadata.map<S_ID>(grad) =  - 0.5 * (1/S - 1. - R % xi % A * (C%C));
 
         return objective;
     };

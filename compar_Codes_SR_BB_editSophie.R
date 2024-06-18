@@ -68,6 +68,7 @@ config <- PLNPCA_param()$config_optim
 ############################################# 
 ########### COMPAR ELBO 
 
+source("FunctionsBB.R")
 
 outB <- Miss.ZIPPCA(data$Y, data$X, q, params = params_init)
 
@@ -75,12 +76,12 @@ params = c(outB$mStep,outB$eStep)
 params$B <- params$beta
 params$D <- params$gamma
 
-source("FunctionsBB.R")
+
 eStep = outB$eStep
 mStep = outB$mStep
 ELBOSophie(data = data, mStep,  eStep )
 
-cbind(ELBOSophie(data = data, mStep,  eStep), unlist(elbo(data,params)))
+cbind(ELBOSophie(data = data, mStep,  eStep), unlist(ElboB(data,params)))
 
 
 mStep = outB$mStep 
