@@ -123,7 +123,7 @@ ElboGradMiSi <- function(miSi, datai, mStep, eStepi){
 VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-4){
   n <- nrow(data$Y); p <- ncol(data$Y); d <- ncol(data$X); q <- ncol(eStep$M)
   nuMuA <- NuMuA(data=data, mStep=mStep, eStep=eStep)
-  nu <- nuMuA$nu; mu <- nuMuA$mu; A <- nuMuA$A
+  nu <- nuMuA$nu; A <- nuMuA$A
   xi <- plogis(nu - data$Omega*A)
   xi <- (xi + tolXi) / (1 + 2*tolXi)
   xi[which(data$Omega*data$Y>0)] <- 1
@@ -204,7 +204,7 @@ Mstep <- function(data, mStep, eStep){
   beta <- optim(par=mStep$beta, fn=ElboBeta, gr=ElboGradBeta, data=data, mStep=mStep, eStep=eStep, 
                 method='BFGS', control=list(fnscale=-1))$par
   mStep$beta <- beta
-  mu <- matrix(data$X%*%mStep$beta, nrow(data$Y), ncol(data$Y))
+  # mu <- matrix(data$X%*%mStep$beta, nrow(data$Y), ncol(data$Y))
   vecC <- optim(par=as.vector(mStep$C), fn=ElboC, gr=ElboGradC, data=data, mStep=mStep, eStep=eStep, 
                 method='BFGS', control=list(fnscale=-1))$par
   mStep$C <- C <- matrix(vecC, ncol(data$Y), ncol(eStep$M))
