@@ -64,19 +64,20 @@ arma::mat ifelse_mat(const arma::mat& Y, const arma::mat& A, const arma::mat& nu
     int n = Y.n_rows;
     int p = Y.n_cols;
     
-    arma::Mat<double> E(n, p, arma::fill::none); 
+    arma::Mat<double> xi(n, p, arma::fill::none); 
     
     for (size_t i = 0; i < n; ++i) {
         for (size_t j = 0; j < p; ++j) {
-            if (Y(i,j) == 0) {
-                E(i,j) = nu(i,j) - R(i,j) * A(i,j);
+            if (Y(i,j)*R(i, j) == 0){
+                xi(i,j) = nu(i,j) - R(i,j) * A(i,j);
+                xi(i, j) = 1./(1. + exp(-xi(i, j)));
             } else {
-                E(i,j) = 1;
+                xi(i,j) = 1.;
             }
         }
     }
    
-   return E;
+   return xi;
 }
 
 arma::mat ifelse_exp(const arma::mat& nu){
@@ -111,7 +112,7 @@ double entropie_logis(arma::mat & xi){
     		if (xi(i,j) == 0 || xi(i,j) == 1){
     		H = H ;
     		} else {
-    		H = H + xi(i,j) * log(xi(i,j)/(1 - xi(i,j))) + log(1 - xi(i,j));
+    		H = H + xi(i,j) * log(xi(i,j)/(1. - xi(i,j))) + log(1. - xi(i,j));
     		}
     	}
     }
@@ -145,10 +146,9 @@ Rcpp::List ElboB(const Rcpp::List & data, // List(Y, R, X)
     arma::mat A = exp(Z + 0.5 * S * (C % C).t());
     arma::vec vecA = vectorise(A);
     arma::mat log_fact_Y = log_factorial_matrix(Y);
-    arma::mat pi = 1/(1 + exp(-nu));
+    arma::mat pi = 1./(1. + exp(-nu));
     arma::vec vecpi = vectorise(pi);
-    arma::mat E = ifelse_mat(Y, A, nu, R);
-    arma::mat xi = 1/(1 + exp(-E));
+    arma::mat xi = ifelse_mat(Y, A, nu, R);
     arma::vec vecxi = vectorise(xi);
     
     double elbo1 = accu(xi % nu - ifelse_exp(nu));
@@ -165,8 +165,8 @@ Rcpp::List ElboB(const Rcpp::List & data, // List(Y, R, X)
     arma::mat gradB = X.t() * (vecR % vecxi % (vecY - vecA));
     arma::mat gradD = X.t() * (vecR % (vecxi - vecpi));
     arma::mat gradC = (R % xi % (Y - A)).t() * M - (R % xi % A).t() * S % C;
-    arma::mat gradM = -(R % xi % (Y - A) * C - M);
-    arma::mat gradS = -0.5 * (1 / S - 1.0 - R % xi % A * (C % C));
+    arma::mat gradM = (R % xi % (Y - A) * C - M);
+    arma::mat gradS = 0.5 * (1. / S - 1. - R % xi % A * (C % C));
     
     return Rcpp::List::create(
         Rcpp::Named("elbo1", elbo1),
@@ -179,7 +179,11 @@ Rcpp::List ElboB(const Rcpp::List & data, // List(Y, R, X)
         Rcpp::Named("gradD", gradD),
         Rcpp::Named("gradC", gradC),
         Rcpp::Named("gradM", gradM),
-        Rcpp::Named("gradS", gradS)
+        Rcpp::Named("gradS", gradS),
+        Rcpp::Named("vecY", vecY),
+        Rcpp::Named("vecxi", vecxi), 
+        Rcpp::Named("A", A), 
+        Rcpp::Named("nu", nu)
     );
 }
 
