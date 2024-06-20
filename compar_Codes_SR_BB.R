@@ -94,35 +94,52 @@ params <- list(B = as.matrix(init$mStep$beta),
                M = as.matrix(init$eStep$M), 
                S = as.matrix(init$eStep$S))
 
-dataB <- list(Y = as.matrix(data$Y), 
-              R = as.matrix(ifelse(is.na(data$Y), 0, 1)), 
-              X = as.matrix(data$X))
-
-config <- PLNPCA_param()$config_optim
 
 source("FunctionsBB.R")
 
-start_timeB <- Sys.time()
-outB <- Miss.ZIPPCA(data$Y, data$X, q, params = params)
-end_timeB <- Sys.time()
-execution_time_realB <- end_timeB - start_timeB
+config <- PLNPCA_param()$config_optim
 
-plot(log(1 + data$Y[data$Y != 0]), log(1 + vem$pred$A[data$Y != 0])) ; abline(0,1)
-plot(log(1 + data$Y[data$Y != 0]), log(1 + outB$pred$A[data$Y != 0])) ; abline(0,1)
-plot(log(1 + vem$pred$A[data$Y != 0]), log(1 + outB$pred$A[data$Y != 0])) ; abline(0,1)
+# start_timeB <- Sys.time()
+# outB <- Miss.ZIPPCA(data$Y, data$X, q, params = params)
+# end_timeB <- Sys.time()
+# execution_time_realB <- end_timeB - start_timeB
+# 
+# outB$elbo
+# vem$elbo
+# 
+# plot(log(1 + data$Y[data$Y != 0]), log(1 + vem$pred$A[data$Y != 0])) ; abline(0,1)
+# plot(log(1 + data$Y[data$Y != 0]), log(1 + outB$pred$A[data$Y != 0])) ; abline(0,1)
+# plot(log(1 + vem$pred$A[data$Y != 0]), log(1 + outB$pred$A[data$Y != 0])) ; abline(0,1)
+# 
+# 
+# boxplot(vem$pred$nu[data$Y == 0], vem$pred$nu[data$Y != 0])
+# 
+# boxplot(outB$pred$nu[data$Y == 0], outB$pred$nu[data$Y != 0])
+
+data$Omega <- ifelse(is.na(data$Y), 0, 1)
+data$R <- ifelse(is.na(data$Y), 0, 1)
+
+source("codesSR/Functions/FunctionsZIPLNmiss.R")
+source("codesSR/Functions/FunctionsZIPLNmissVec.R")
 
 
-boxplot(vem$pred$nu[data$Y == 0], vem$pred$nu[data$Y != 0])
+ElboSfun <- ELBO(data = data, mStep = init$mStep, eStep = init$eStep)
+SgradS <- matrix(ElboGradVecS(Svec = as.vector(t(init$eStep$S)), data = data, mStep = init$mStep, eStep = init$eStep),n, q, byrow = TRUE)
+SgradM <- matrix(ElboGradVecM(Mvec = as.vector(t(init$eStep$M)), data = data, mStep = init$mStep, eStep = init$eStep),n, q, byrow = TRUE)
+SgradBeta <- ElboGradBeta(beta = init$mStep$beta, data = data, mStep = init$mStep, eStep = init$eStep)
+SgradGamma <- ElboGradGamma(gamma = init$mStep$gamma, data = data, mStep = init$mStep, eStep = init$eStep)
+SgradC <- as.matrix(ElboGradC(vecC = as.vector(init$mStep$C), data = data, mStep = init$mStep, eStep = init$eStep),p,q)
 
-boxplot(outB$pred$nu[data$Y == 0], outB$pred$nu[data$Y != 0])
+ElboBfun.init <- ElboB(data = data, params = params)
 
-source("codesSR/Functions/FunctionsZIPLN.R")
+BgradS <- ElboBfun.init$gradS
+BgradM <-ElboBfun.init$gradM
+BgradBeta <- ElboBfun.init$gradB
+BgradGamma <- ElboBfun.init$gradD
+BgradC <- ElboBfun.init$gradC
 
-
-ElboSfun <- ELBO(data = data, mStep = outB$mStep, eStep = outB$eStep)
-
-
-
+BgradS - SgradS
+BgradM - SgradM
 
 
 
