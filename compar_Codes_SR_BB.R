@@ -90,7 +90,7 @@ execution_time_real <- end_time - start_time
 # Fit de Barbara
 
 # start_timeB <- Sys.time()
-# outB <- Miss.ZIPPCA(data$Y, data$X, q, params = params)
+# outB <- Miss.ZIPPCA(data$Y, data$X, q, params=params)
 # end_timeB <- Sys.time()
 # execution_time_realB <- end_timeB - start_timeB
 # 
@@ -113,25 +113,24 @@ data$R <- data$Omega
 mStep <- init$mStep; eStep <- init$eStep
 mStep$gamma <- rnorm(d); mStep$beta <- rnorm(d); mStep$C <- matrix(rnorm(p*q), p, q)
 eStep$M <- matrix(rnorm(n*q), n, q); eStep$S <- matrix(exp(0.01*rnorm(n*q)), n, q);
-params <- list(B = as.matrix(mStep$beta), 
-               D = as.matrix(mStep$gamma), 
-               C = as.matrix(mStep$C), 
-               M = as.matrix(eStep$M), 
-               S = as.matrix(eStep$S))
+params <- list(B=as.matrix(mStep$beta), 
+               D=as.matrix(mStep$gamma), 
+               C=as.matrix(mStep$C), 
+               M=as.matrix(eStep$M), 
+               S=as.matrix(eStep$S))
 eStep$xi <- ComputeXi(data=data, mStep=mStep, eStep=eStep, tolXi=0)
 
 source("codesSR/Functions/FunctionsZIPLNmiss.R")
 source("codesSR/Functions/FunctionsZIPLNmissVec.R")
 
+Selbo <- ELBO(data=data, mStep=mStep, eStep=eStep)
+SgradS <- matrix(ElboGradVecS(Svec=as.vector(t(eStep$S)), data=data, mStep=mStep, eStep=eStep),n, q, byrow=TRUE)
+SgradM <- matrix(ElboGradVecM(Mvec=as.vector(t(eStep$M)), data=data, mStep=mStep, eStep=eStep),n, q, byrow=TRUE)
+SgradBeta <- ElboGradBeta(beta=mStep$beta, data=data, mStep=mStep, eStep=eStep)
+SgradGamma <- ElboGradGamma(gamma=mStep$gamma, data=data, mStep=mStep, eStep=eStep)
+SgradC <- as.matrix(ElboGradC(vecC=as.vector(mStep$C), data=data, mStep=mStep, eStep=eStep),p,q)
 
-Selbo <- ELBO(data = data, mStep = mStep, eStep = eStep)
-SgradS <- matrix(ElboGradVecS(Svec = as.vector(t(eStep$S)), data = data, mStep = mStep, eStep = eStep),n, q, byrow = TRUE)
-SgradM <- matrix(ElboGradVecM(Mvec = as.vector(t(eStep$M)), data = data, mStep = mStep, eStep = eStep),n, q, byrow = TRUE)
-SgradBeta <- ElboGradBeta(beta = mStep$beta, data = data, mStep = mStep, eStep = eStep)
-SgradGamma <- ElboGradGamma(gamma = mStep$gamma, data = data, mStep = mStep, eStep = eStep)
-SgradC <- as.matrix(ElboGradC(vecC = as.vector(mStep$C), data = data, mStep = mStep, eStep = eStep),p,q)
-
-ElboBfun <- ElboB(data = data, params = params)
+ElboBfun <- ElboB(data=data, params=params)
 ElboBfun$objective
 Belbo <- ElboBfun$objective
 BgradS <- ElboBfun$gradS
@@ -162,8 +161,109 @@ print(c(Selbo, ElboBfun$objective))
 
 
 
+###############################################################################
+# Optim
+Parms2Steps <- function(parms, data){
+  n <- nrow(data$Y); p <- ncol(data$Y); d <- ncol(data$X)
+  mStep <- list(gamma=parms[1:d], beta=parms[d+(1:d)], 
+                C=matrix(parms[(2*d)+(1:(p*q))], p, q))
+  eStep <- list(M=matrix(parms[(2*d)+(p*q)+(1:(n*q))], n, q, byrow=TRUE), 
+                S=matrix(parms[(2*d)+(p*q)+(n*q)+(1:(n*q))], n, q, byrow=TRUE))
+  eStep$xi <- ComputeXi(data=data, mStep=mStep, eStep=eStep, tolXi=0)
+  return(list(m=mStep, e=eStep))  
+}
+Sobj <- function(parms, data){
+  steps <- Parms2Steps(parms=parms, data=data)
+  ELBO(data=data, mStep=steps$m, eStep=steps$e)
+}
+Sgrad <- function(parms, data){
+  steps <- Parms2Steps(parms=parms, data=data)
+  c(ElboGradGamma(gamma=steps$m$gamma, data=data, mStep=steps$m, eStep=steps$e),
+    ElboGradBeta(beta=steps$m$beta, data=data, mStep=steps$m, eStep=steps$e), 
+    ElboGradC(vecC=as.vector(steps$m$C), data=data, mStep=steps$m, eStep=steps$e), 
+    ElboGradVecM(Mvec=as.vector(t(steps$e$M)), data=data, mStep=steps$m, eStep=steps$e), 
+    ElboGradVecS(Svec=as.vector(t(steps$e$S)), data=data, mStep=steps$m, eStep=steps$e))
+}
+Parms2Params <- function(parms, data){
+  n <- nrow(data$Y); p <- ncol(data$Y); d <- ncol(data$X)
+  steps <- Parms2Steps(parms=parms, data=data)
+  return(list(B=as.matrix(steps$m$beta), 
+                 D=as.matrix(steps$m$gamma), 
+                 C=as.matrix(steps$m$C), 
+                 M=as.matrix(steps$e$M), 
+                 S=as.matrix(steps$e$S)))
+}
+Bobj <- function(parms, data){
+  params <- Parms2Params(parms=parms, data=data)
+  ElboB(data=data, params=params)$obj
+}
+Bgrad <- function(parms, data){
+  params <- Parms2Params(parms=parms, data=data)
+  elbo <- ElboB(data=data, params=params)
+  c(as.vector(elbo$gradD), as.vector(elbo$gradB), as.vector(elbo$gradC), 
+    as.vector(t(elbo$gradM)), as.vector(t(elbo$gradS)))
+}
+BobjLogS <- function(parmsLogS, data){
+  params <- Parms2Params(parms=parmsLogS, data=data)
+  params$S <- exp(params$S)
+  ElboB(data=data, params=params)$obj
+}
+BgradLogS <- function(parmsLogS, data){
+  params <- Parms2Params(parms=parmsLogS, data=data)
+  params$S <- exp(params$S)
+  elbo <- ElboB(data=data, params=params)
+  c(as.vector(elbo$gradD), as.vector(elbo$gradB), as.vector(elbo$gradC),
+    as.vector(t(elbo$gradM)), as.vector(t(elbo$gradS))*as.vector(t(params$S)))
+}
 
+parmsInit <- c(mStep$gamma, mStep$beta, as.vector(mStep$C), 
+               as.vector(t(eStep$M)), as.vector(t(eStep$S)))
+parmsLogSInit <- c(mStep$gamma, mStep$beta, as.vector(mStep$C), 
+                   as.vector(t(eStep$M)), log(as.vector(t(eStep$S))))
 
+tolS <- 1e-12
+lBound <- c(rep(-Inf, (2*d)+(p*q)+(n*q)), rep(tolS, n*q))
+print(c(Sobj(parms=parmsInit, data=data), Bobj(parms=parmsInit, data=data)))
+plot(Sgrad(parms=parmsInit, data=data), Bgrad(parms=parmsInit, data=data)); abline(0, 1, v=0, h=0)
+max(abs(Sgrad(parms=parmsInit, data=data) - Bgrad(parms=parmsInit, data=data)))
 
+Sfit <- optim(par=parmsInit, fn=Sobj, gr=Sgrad, data=data, 
+              method='L-BFGS-B', control=list(fnscale=-1), lower=lBound)
+Sfit$value
 
+# vals <- NULL; i <- 0; path <- matrix(NA, 1e3, length(lBound))
+# trace(Bgrad, exit = quote(print(c(returnValue()))))
+# trace(Bobj, exit = quote(print(c(i, returnValue(), parms))))
+Bfit <- optim(par=parmsInit, fn=Bobj, gr=Bgrad, data=data, 
+              method='L-BFGS-B', control=list(fnscale=-1), lower=lBound)
+# untrace(Bgrad)
+# untrace(Bobj)
+Bfit$value
 
+BobjLogS(parmsLogS=parmsLogSInit, data=data)
+plot(Bgrad(parms=parmsInit, data=data), 
+     BgradLogS(parms=parmsLogSInit, data=data)); abline(0, 1, v=0, h=0)
+BfitLogS <- optim(par=parmsLogSInit, fn=BobjLogS, gr=BgradLogS, data=data, 
+              method='BFGS', control=list(fnscale=-1))
+# untrace(Bgrad)
+# untrace(Bobj)
+BfitLogS$value
+
+# negBobj <- function(parms, data){-Bobj(parms, data)}
+# negBgrad <- function(parms, data){-Bgrad(parms, data)}
+# library(nloptr)
+# opts <- list("algorithm"="NLOPT_LD_LBFGS", "xtol_rel"=1.0e-8)
+# # opts <- list("algorithm"="NLOPT_LD_CCSAQ", "xtol_rel"=1.0e-8)
+# Bfit <- nloptr(x0=parmsInit, eval_f=negBobj, eval_grad_f=negBgrad, data=data, 
+#                lb=lBound, opts=opts)
+# -Bfit$obj
+
+plot(Sfit$par, Bfit$par); abline(0, 1, v=0, h=0)
+
+sel <- (1:((2*d)+(p*q)+(n*q)))
+plot(as.data.frame(cbind(Sfit$par[sel], Bfit$par[sel], BfitLogS$par[sel])))
+print(rbind(
+  c(Sobj(parms=parmsInit, data=data), Bobj(parms=parmsInit, data=data), 
+    BobjLogS(parmsLogS=parmsLogSInit, data=data)),
+  c(Sfit$value, Bfit$value, BfitLogS$value)
+  ))
