@@ -7,7 +7,7 @@ library(PLNmodels)
 # seed <- .Random.seed
 source('codesSR/Functions/FunctionsUtils.R')
 source('codesSR/Functions/FunctionsZIPLN.R')
-source('codesSR/Functions/FunctionsZIP.R')
+
 source("FunctionsBB.R")
 
 simDir <- 'SimulationsBB/datasim/'

@@ -44,13 +44,15 @@ Miss.ZIPPCA <- function(Y, # Table de comptages n*p qui peut contenir des donné
                         X, # Covariables np*d dont une colonne de 1 pour l'intercept
                         q, # Dimension de l'espace latent q
                         params = NULL, # Paramètres fourni en entrée
-                        config = NULL){
+                        config = NULL,
+                        tolXi = NULL){
   
   n <- nrow(Y)
   p <- ncol(Y)
   
-  if (is.null(params)){params <- Init_PLNPCA(Y, X, q)}
+  if (is.null(params)){params <- Init_ZIP(Y, X, q)}
   if (is.null(config)){config <- PLNPCA_param()$config_optim}
+  if (is.null(tolXi)){tolXi <- 1e-4}
   
   R <- ifelse(is.na(Y), 0, 1) # Masque qui met des 0 à la place des données manquantes
   
@@ -60,7 +62,7 @@ Miss.ZIPPCA <- function(Y, # Table de comptages n*p qui peut contenir des donné
                R = R,
                X = X)
   
-  out <- nlopt_optimize_ZIP(data, params, config)
+  out <- nlopt_optimize_ZIP(data, params, config, tolXi)
   
   mu <- VectorToMatrix(X%*%out$B, n, p)
   nu <- VectorToMatrix(X%*%out$D, n, p)
@@ -78,7 +80,8 @@ Miss.ZIPPCA <- function(Y, # Table de comptages n*p qui peut contenir des donné
               pred = pred, 
               iter = iter, 
               elboPath = elboPath, 
-              elbo = elbo)
+              elbo = elbo,
+              params.init = params)
   
   return(res)
   
