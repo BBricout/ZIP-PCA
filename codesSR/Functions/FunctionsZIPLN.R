@@ -28,6 +28,7 @@ InitZiPLN <- function(data){
   mStep <- list(gamma=zip$gamma, beta=zip$beta, 
                 C=pca$rotation %*% diag(pca$sdev[1:q]))
   eStep <- list(xi=matrix(mean(data$Y > 0), n, p), M=matrix(0, n, q), S=matrix(1e-4, n, q))
+  eStep$xi <- ComputeXi(data=data, mStep=mStep, eStep=eStep)
   return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca))
 }
 OracleZiPLN <- function(sim){
