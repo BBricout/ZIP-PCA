@@ -6,7 +6,7 @@ library(PLNmodels)
 
 # seed <- .Random.seed
 source('codesSR/Functions/FunctionsUtils.R')
-source('codesSR/Functions/FunctionsZIPLN.R')
+source('codesSR/Functions/FunctionsZIPLNmiss.R')
 
 source("FunctionsBB.R")
 
@@ -54,65 +54,37 @@ for(seed in 1:10){
   }
 }
 
+seedX <- 1; set.seed(seedX)
+X0 <- matrix(rnorm(n*p*d), n*p, d); X0[, 1] <- 1; 
+baseSimName <- paste0(baseSimName, '-sameX', seedX)
 
+simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
+simNameFull <- paste0(baseSimName, simParmsFull)
+simFileFull <- paste0(simDir, simNameFull, '-noMiss.Rdata')
+sim <- SimZiPLN(n=n, p=p, d=d, q=q, X=X0)
+data <- list(X=sim$X, Y=sim$Y,  ij=sim$ij, logFactY=lgamma(sim$Y+1))
+true <- list(mStep=list(gamma=sim$gamma, beta=sim$beta, C=sim$C),
+             eStep=list(M=sim$W, S=matrix(1e-4, n, q), xi=matrix(plogis(sim$X%*%sim$gamma), n, p)),
+             latent=list(U=sim$U, W=sim$W, Z=sim$Z, Yall=sim$Yall))
 
+data$Omega <- matrix(1, n, p)
+data$R <- data$Omega
+init <- Init_ZIP(data$Y, data$X, q)
 
-# Fit de Stephane
-start_time <- Sys.time()
-for(seed in 1:1){
-    simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
-    simNameFull <- paste0(baseSimName, simParmsFull)
-    simFileFull <- paste0(simDir, simNameFull, '-noMiss.Rdata')
-    load(file=simFileFull)
-    
-    
-    ################ ajustement SR
-    init <- InitZiPLN(data) #! Fichiers différnets pour miss et pas miss
-    # vem <- VemZiPLN(data=data, init=init, iterMax=5e3)
-    # save(init, vem, file=fitFile)
-    ################ ajustement BB
-    
-    for(oo in 1:obsNb){
-        obs <- obsList[oo]
-        simParms <- paste0(simParmsFull, '-obs', 100*obs)
-        simName <- paste0(baseSimName, simParms)
-        simFile <- paste0(simDir, simName, '.Rdata')
-      ################ ajustement SR
-       
-        
-    }
-    }
+config <- PLNPCA_param()$config_optim
+config$xtol_rel <- 1e-10
 
-end_time <- Sys.time()
-execution_time_real <- end_time - start_time
-
-#############################################################
-# Fit de Barbara
-
-# start_timeB <- Sys.time()
-# outB <- Miss.ZIPPCA(data$Y, data$X, q, params=params)
-# end_timeB <- Sys.time()
-# execution_time_realB <- end_timeB - start_timeB
-# 
-# outB$elbo
-# vem$elbo
-# 
-# plot(log(1 + data$Y[data$Y != 0]), log(1 + vem$pred$A[data$Y != 0])) ; abline(0,1)
-# plot(log(1 + data$Y[data$Y != 0]), log(1 + outB$pred$A[data$Y != 0])) ; abline(0,1)
-# plot(log(1 + vem$pred$A[data$Y != 0]), log(1 + outB$pred$A[data$Y != 0])) ; abline(0,1)
-# 
-# boxplot(vem$pred$nu[data$Y == 0], vem$pred$nu[data$Y != 0])
-# 
-# boxplot(outB$pred$nu[data$Y == 0], outB$pred$nu[data$Y != 0])
+out <- Miss.ZIPPCA(data$Y, data$X, q, config = config)
 
 set.seed(NULL)
-data$Omega <- matrix(1, n, p)
-data$Omega <- matrix(rbinom(n*p, 1, 0.9), n, p)
-data$Y[which(data$Omega==0)] <- 23
-data$R <- data$Omega
-mStep <- init$mStep; eStep <- init$eStep
-mStep$gamma <- rnorm(d); mStep$beta <- rnorm(d); mStep$C <- matrix(rnorm(p*q), p, q)
-eStep$M <- matrix(rnorm(n*q), n, q); eStep$S <- matrix(exp(0.01*rnorm(n*q)), n, q);
+
+#data$Omega <- matrix(rbinom(n*p, 1, 0.9), n, p)
+#data$Y[which(data$Omega==0)] <- 23
+mStep <- list(gamma = init$D, beta = init$B, C = init$C)
+eStep <- list(M = init$M, S = init$S)
+
+# mStep$gamma <- rnorm(d); mStep$beta <- rnorm(d); mStep$C <- matrix(rnorm(p*q), p, q)
+# eStep$M <- matrix(rnorm(n*q), n, q); eStep$S <- matrix(exp(0.01*rnorm(n*q)), n, q);
 params <- list(B=as.matrix(mStep$beta), 
                D=as.matrix(mStep$gamma), 
                C=as.matrix(mStep$C), 
@@ -220,6 +192,29 @@ parmsInit <- c(mStep$gamma, mStep$beta, as.vector(mStep$C),
                as.vector(t(eStep$M)), as.vector(t(eStep$S)))
 parmsLogSInit <- c(mStep$gamma, mStep$beta, as.vector(mStep$C), 
                    as.vector(t(eStep$M)), log(as.vector(t(eStep$S))))
+
+paramsLogS <- Parms2Params(parms = parmsLogSInit, data)
+
+source("FunctionsBB.R")
+
+paramsLogS$logS <- paramsLogS$S
+
+BobjLogS(parmsLogSInit, data)
+gradLog <- Parms2Params(BgradLogS(parmsLogSInit, data), data)
+test <- ElboBLogS(data, paramsLogS)
+plot(test$gradM, ElboB(data, params)$gradM) ; abline(0,1)
+
+ElboB(data, params)$objective
+
+plot(gradLog$S, test$gradS) ; abline(0,1)
+plot(gradLog$C, test$gradC) ; abline(0,1)
+plot(gradLog$B, test$gradB) ; abline(0,1)
+plot(gradLog$D, test$gradD) ; abline(0,1)
+plot(gradLog$M, test$gradM) ; abline(0,1)
+
+out <- Miss.ZIPPCA(data$Y, data$X, q, params = params)
+out$elbo
+
 
 tolS <- 1e-12
 lBound <- c(rep(-Inf, (2*d)+(p*q)+(n*q)), rep(tolS, n*q))

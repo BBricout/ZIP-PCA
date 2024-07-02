@@ -44,6 +44,8 @@ true <- list(mStep=list(gamma=sim$gamma, beta=sim$beta, C=sim$C),
                  latent=list(U=sim$U, W=sim$W, Z=sim$Z, Yall=sim$Yall))
 #save(data, true, file=simFileFull)
 
+data$Omega <- ifelse(is.na(data$Y), 0, 1)
+data$R <- data$Omega
 
 
 #############################################################

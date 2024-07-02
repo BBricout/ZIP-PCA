@@ -81,7 +81,8 @@ Miss.ZIPPCA <- function(Y, # Table de comptages n*p qui peut contenir des donné
               iter = iter, 
               elboPath = elboPath, 
               elbo = elbo,
-              params.init = params)
+              params.init = params,
+              monitoring = out$monitoring)
   
   return(res)
   

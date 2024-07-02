@@ -56,25 +56,28 @@ X <- data$X
 
 source("FunctionsBB.R")
 
-config <- list(
-  algorithm = "CCSAQ",
-  backend = "nlopt",
-  maxeval = 10000,
-  ftol_rel = 1e-08,
-  xtol_rel = 1e-06,
-  ftol_abs = 0,
-  xtol_abs = 0,
-  maxtime = -1,
-  trace = 1,
-  lower_bound_S = matrix(1e-6, nrow = n, ncol = q) # Exemple de borne inférieure
-)
+# config <- list(
+#   algorithm = "CCSAQ",
+#   backend = "nlopt",
+#   maxeval = 10000,
+#   ftol_rel = 1e-08,
+#   xtol_rel = 1e-06,
+#   ftol_abs = 0,
+#   xtol_abs = 0,
+#   maxtime = -1,
+#   trace = 1,
+#   lower_bound_S = matrix(1e-6, nrow = n, ncol = q) # Exemple de borne inférieure
+# )
 # config$maxeval <- 3
 
+params <- Init_ZIP(Y, X, q)
+params$S <- exp(params$S)
+
 # start_timeB <- Sys.time()
-outB <- Miss.ZIPPCA(data$Y, data$X, q, tolXi = 1e-4, config = config)
+outB <- Miss.ZIPPCA(data$Y, data$X, q, tolXi = 1e-4)
 # end_timeB <- Sys.time()
 # execution_time_realB <- end_timeB - start_timeB
-elbo <- ElboB(data, params = outB$params.init)
+
 outB$elboPath
 
 plot(log(1 + data$Y[data$Y != 0]), log(1 + outB$pred$A[data$Y != 0])) ; abline(0,1)

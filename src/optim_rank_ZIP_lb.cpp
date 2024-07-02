@@ -123,8 +123,7 @@ double entropie_logis(arma::mat & xi){
 
 // [[Rcpp::export]]
 Rcpp::List ElboB(const Rcpp::List & data, // List(Y, R, X)
-                 const Rcpp::List & params, // List(B, C, M, S)
-                 double tolXi
+                 const Rcpp::List & params // List(B, C, M, S)
                 ) {
     const arma::mat & Y = Rcpp::as<arma::mat>(data["Y"]); // responses (n,p)
     const arma::mat & R = Rcpp::as<arma::mat>(data["R"]); // missing data (n,p)
@@ -151,16 +150,15 @@ Rcpp::List ElboB(const Rcpp::List & data, // List(Y, R, X)
     arma::mat log_fact_Y = log_factorial_matrix(Y);
     arma::mat pi = 1./(1. + exp(-nu));
     arma::vec vecpi = vectorise(pi);
-    arma::mat xi = ifelse_mat(Y, A, nu, R, tolXi);
+    arma::mat xi = ifelse_mat(Y, A, nu, R, 1e-4);
     arma::vec vecxi = vectorise(xi);
     
 
     
     double objective = (accu(xi % nu - ifelse_exp(nu)) + 
                         accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y)) - 
-                        0.5 * accu(M % M + S - 0.5*log(S%S)) + 
+                        0.5 * accu(M % M + S - log(S)) + 
                         entropie_logis(xi) + 0.5 * n * q);
-                        
     
     arma::mat gradB = X.t() * (vecR % vecxi % (vecY - vecA));
     arma::mat gradD = X.t() * (vecR % (vecxi - vecpi));
@@ -168,11 +166,11 @@ Rcpp::List ElboB(const Rcpp::List & data, // List(Y, R, X)
     arma::mat gradM = (R % xi % (Y - A) * C - M);
     arma::mat gradS = 0.5 * (1. / S - 1. - R % xi % A * (C % C));
     
-    double elbo1 = accu(xi % nu - ifelse_exp(nu));
+        double elbo1 = accu(xi % nu - ifelse_exp(nu));
     double elbo2 = 0.5 * accu(M % M + S);
     double elbo3 = accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y));
     double elbo4 = entropie_logis(xi);
-    double elbo5 = 0.5 * accu(0.5*log(S%S)) + n * q * 0.5;
+    double elbo5 = 0.5 * accu(log(S)) + n * q * 0.5;
     
     return Rcpp::List::create(
         Rcpp::Named("elbo1", elbo1),
@@ -180,19 +178,33 @@ Rcpp::List ElboB(const Rcpp::List & data, // List(Y, R, X)
         Rcpp::Named("elbo3", elbo3),
         Rcpp::Named("elbo4", elbo4),
         Rcpp::Named("elbo5", elbo5),
-        Rcpp::Named("objective", objective)
-        //Rcpp::Named("gradB", gradB),
-        //Rcpp::Named("gradD", gradD),
-        //Rcpp::Named("gradC", gradC),
-        //Rcpp::Named("gradM", gradM),
-        //Rcpp::Named("gradS", gradS),
-        //Rcpp::Named("vecY", vecY),
-        //Rcpp::Named("vecxi", vecxi), 
-        //Rcpp::Named("A", A), 
-       // Rcpp::Named("nu", nu)
+        Rcpp::Named("objective", objective),
+        Rcpp::Named("gradB", gradB),
+        Rcpp::Named("gradD", gradD),
+        Rcpp::Named("gradC", gradC),
+        Rcpp::Named("gradM", gradM),
+        Rcpp::Named("gradS", gradS),
+        Rcpp::Named("vecY", vecY),
+        Rcpp::Named("vecxi", vecxi), 
+        Rcpp::Named("A", A), 
+        Rcpp::Named("nu", nu)
     );
 }
 
+
+template <typename T>
+void set_from_r_sexp(arma::Mat<T>& matrix, SEXP sexp) {
+    if (!Rf_isMatrix(sexp)) {
+        Rcpp::stop("Expected a matrix.");
+    }
+    Rcpp::NumericMatrix rmatrix(sexp);
+    if (matrix.n_rows != rmatrix.nrow() || matrix.n_cols != rmatrix.ncol()) {
+        Rcpp::stop("Dimension mismatch.");
+    }
+    for (std::size_t i = 0; i < matrix.n_elem; ++i) {
+        matrix(i) = rmatrix[i];
+    }
+}
 
 	
 
@@ -202,7 +214,7 @@ Rcpp::List ElboB(const Rcpp::List & data, // List(Y, R, X)
 // Rank (q) is already determined by param dimensions ; not passed anywhere
 
 // [[Rcpp::export]]
-Rcpp::List nlopt_optimize_ZIP(
+Rcpp::List nlopt_optimize_ZIP_lb(
     const Rcpp::List & data  , // List(Y, R, X)
     const Rcpp::List & params, // List(B, C, M, S)
     const Rcpp::List & config,  // List of config values
@@ -233,7 +245,23 @@ Rcpp::List nlopt_optimize_ZIP(
 
     auto optimizer = new_nlopt_optimizer(config, parameters.size());
     
- 
+    std::cout<< metadata.packed_size << std::endl;
+    
+	  // Définition des bornes inférieures pour tous les paramètres
+    if (config.containsElementNamed("lower_bounds")) {
+        auto lower_bounds_r = Rcpp::as<std::vector<double>>(config["lower_bounds"]);
+        if (lower_bounds_r.size() != metadata.packed_size) {
+            Rcpp::stop("La taille du vecteur lower_bounds ne correspond pas à la taille totale des paramètres.");
+        }
+        std::vector<double> lower_bounds = lower_bounds_r;
+
+        // Application des bornes à l'optimiseur
+        nlopt_set_lower_bounds(optimizer.get(), lower_bounds.data());
+    } else {
+        std::vector<double> lower_bounds(metadata.packed_size, -HUGE_VAL);
+        nlopt_set_lower_bounds(optimizer.get(), lower_bounds.data());
+    }
+    
     if(config.containsElementNamed("xtol_abs")) {
         SEXP value = config["xtol_abs"];
         if(Rcpp::is<double>(value)) {
@@ -274,6 +302,7 @@ Rcpp::List nlopt_optimize_ZIP(
 	    arma::vec vecR = arma::vectorise(R);
 	    arma::mat Z = mu + M * C.t();
 	    arma::vec vecZ = arma::vectorise(Z);
+	    //arma::mat A = exp(Z + 0.5 * S2 * (C % C).t());
 	    arma::mat A = exp(Z + 0.5 * S * (C % C).t());
 	    arma::vec vecA = vectorise(A);
 	    arma::mat log_fact_Y = log_factorial_matrix(Y);
@@ -285,9 +314,17 @@ Rcpp::List nlopt_optimize_ZIP(
         
             double objective = (accu(xi % nu - ifelse_exp(nu)) + 
                         accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y)) - 
-                        0.5 * accu(M % M + S - 0.5 * log(S2)) + 
+                        0.5 * accu(M % M + S - log(S)) + 
                         entropie_logis(xi) + 0.5 * n * q);
         objective_values.push_back(objective);
+        
+            arma::mat gradB = X.t() * (vecR % vecxi % (vecY - vecA));
+	    arma::mat gradD = X.t() * (vecR % (vecxi - vecpi));
+	    //arma::mat gradC = (R % xi % (Y - A)).t() * M - (R % xi % A).t() * S2 % C;
+	    arma::mat gradC = (R % xi % (Y - A)).t() * M - (R % xi % A).t() * S % C;
+	    arma::mat gradM = (R % xi % (Y - A) * C - M);
+	    //arma::mat gradS = (-S + 1./S - R % xi % A * (C%C) % S);
+	    arma::mat gradS =  - 0.5 * (1/S - 1. - R % xi % A * (C%C));
         
 
         metadata.map<B_ID>(grad) = - X.t() *  (vecR % vecxi % (vecY - vecA)) ;
