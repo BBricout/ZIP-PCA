@@ -32,9 +32,9 @@ InitZiPLN <- function(data, q){
   mStep <- list(gamma=zip$gamma, beta=zip$beta, C=C)
   # eStep <- list(xi=matrix(sum(data$Omega*(data$Y > 0))/sum(data$Omega), n, p), 
                 # M=matrix(0, n, q), S=matrix(1e-4, n, q))
-  xi <- matrix(plogis(data$X%*%mStep$gamma), nrow(data$Y), ncol(data$Y))
-  xi[which(data$Y > 0)] <- 1
-  eStep <- list(xi=xi, M=matrix(0, nrow(data$Y), q), S=matrix(1e-4, nrow(data$Y), q))
+  
+  eStep <- list(M=matrix(0, nrow(data$Y), q), S=matrix(1e-4, nrow(data$Y), q))
+  eStep$xi <- ComputeXi(data=data, mStep=mStep, eStep=eStep)
   return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca, zip=zip))
 }
 OracleZiPLN <- function(data, latent){

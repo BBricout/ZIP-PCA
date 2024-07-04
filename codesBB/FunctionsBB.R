@@ -62,7 +62,7 @@ Miss.ZIPPCA <- function(Y, # Table de comptages n*p qui peut contenir des donné
                R = R,
                X = X)
   
-  out <- nlopt_optimize_ZIP(data, params, config, tolXi)
+  out <- nlopt_optimize_ZIP(data, params, config)
   
   mu <- VectorToMatrix(X%*%out$B, n, p)
   nu <- VectorToMatrix(X%*%out$D, n, p)

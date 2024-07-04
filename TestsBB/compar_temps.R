@@ -167,11 +167,11 @@ Parms2Params <- function(parms, data){
 }
 Bobj <- function(parms, data){
   params <- Parms2Params(parms=parms, data=data)
-  ElboB(data=data, params=params)$obj
+  ElboB(data=data, params=params, tolXi = 1e-04)$obj
 }
 Bgrad <- function(parms, data){
   params <- Parms2Params(parms=parms, data=data)
-  elbo <- ElboB(data=data, params=params)
+  elbo <- ElboB(data=data, params=params, tolXi = 1e-04)
   c(as.vector(elbo$gradD), as.vector(elbo$gradB), as.vector(elbo$gradC), 
     as.vector(t(elbo$gradM)), as.vector(t(elbo$gradS)))
 }
