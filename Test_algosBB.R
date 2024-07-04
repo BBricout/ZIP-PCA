@@ -21,35 +21,35 @@ params <- list(B = as.matrix(init$mStep$beta),
                M = as.matrix(init$eStep$M), 
                S = as.matrix(init$eStep$S))
 
-# plot(init$mStep$beta, params$B) ; abline(0,1)
-# plot(init$mStep$gamma, params$D) ; abline(0,1)
-# plot(init$mStep$C, params$C) ; abline(0,1)
-# plot(init$eStep$M, params$M) ; abline(0,1)
-# plot(init$eStep$S, params$S) ; abline(0,1)
+plot(init$mStep$beta, params$B) ; abline(0,1)
+plot(init$mStep$gamma, params$D) ; abline(0,1)
+plot(init$mStep$C, params$C) ; abline(0,1)
+plot(init$eStep$M, params$M) ; abline(0,1)
+plot(init$eStep$S, params$S) ; abline(0,1)
 
 
 # Vérification gradients et ELBO
 
 mStep <- init$mStep ; eStep <- init$eStep
 
-# Belbo_grad <- ElboB(data, params, tolXi)
-# 
-# Selbo <- ELBO(data=data, mStep=mStep, eStep=eStep)
-# SgradS <- matrix(ElboGradVecS(Svec=as.vector(t(eStep$S)), data=data, mStep=mStep, eStep=eStep),n, q, byrow=TRUE)
-# SgradM <- matrix(ElboGradVecM(Mvec=as.vector(t(eStep$M)), data=data, mStep=mStep, eStep=eStep),n, q, byrow=TRUE)
-# SgradBeta <- ElboGradBeta(beta=mStep$beta, data=data, mStep=mStep, eStep=eStep)
-# SgradGamma <- ElboGradGamma(gamma=mStep$gamma, data=data, mStep=mStep, eStep=eStep)
-# SgradC <- as.matrix(ElboGradC(vecC=as.vector(mStep$C), data=data, mStep=mStep, eStep=eStep),p,q)
-# 
-# Belbo_grad$objective ; Selbo
-# 
-# plot(init$eStep$xi, Belbo_grad$xi) ; abline(0,1)
-# 
-# plot(Belbo_grad$gradB, SgradBeta) ; abline(0,1)
-# plot(Belbo_grad$gradD, SgradGamma) ; abline(0,1)
-# plot(Belbo_grad$gradC, SgradC) ; abline(0,1)
-# plot(Belbo_grad$gradM, SgradM) ; abline(0,1)
-# plot(Belbo_grad$gradS, SgradS) ; abline(0,1)
+Belbo_grad <- ElboB(data, params, tolXi)
+
+Selbo <- ELBO(data=data, mStep=mStep, eStep=eStep)
+SgradS <- matrix(ElboGradVecS(Svec=as.vector(t(eStep$S)), data=data, mStep=mStep, eStep=eStep),n, q, byrow=TRUE)
+SgradM <- matrix(ElboGradVecM(Mvec=as.vector(t(eStep$M)), data=data, mStep=mStep, eStep=eStep),n, q, byrow=TRUE)
+SgradBeta <- ElboGradBeta(beta=mStep$beta, data=data, mStep=mStep, eStep=eStep)
+SgradGamma <- ElboGradGamma(gamma=mStep$gamma, data=data, mStep=mStep, eStep=eStep)
+SgradC <- as.matrix(ElboGradC(vecC=as.vector(mStep$C), data=data, mStep=mStep, eStep=eStep),p,q)
+
+Belbo_grad$objective ; Selbo
+
+plot(init$eStep$xi, Belbo_grad$xi) ; abline(0,1)
+
+plot(Belbo_grad$gradB, SgradBeta) ; abline(0,1)
+plot(Belbo_grad$gradD, SgradGamma) ; abline(0,1)
+plot(Belbo_grad$gradC, SgradC) ; abline(0,1)
+plot(Belbo_grad$gradM, SgradM) ; abline(0,1)
+plot(Belbo_grad$gradS, SgradS) ; abline(0,1)
 
 
 ## Comparaison avec optim
@@ -66,6 +66,7 @@ lb <- c(rep(-Inf, 2*d + q*(p+n)), rep(1e-06, n * q))
 config <- PLNPCA_param()$config_optim ; tolXi <- 1e-04
 config$algorithm <- "MMA" # Par défaut dans config c'est "CCSAQ"
 config$lower_bounds <- lb # Si tu veux voir les résultats sans donner la lb il ne faut pas la mettre dans config
+# config$maxeval <- 5
 
 out <- Miss.ZIPPCA(Y = data$Y, X = data$X, q, params = params, config = config)
 
@@ -96,7 +97,7 @@ plot(out$elboPath, main = "ELBO path")
 plot(XD, XD.hat, main = "Estimation de la logistique") ; abline(0,1)
 plot(XB, XB.hat, main = "Estimation des régresseurs") ; abline(0,1)
 boxplot(VectorToMatrix(XD, n, p) ~ Y.logit, main = "True")
-boxplot(VectorToMatrix(XD_ref, n, p) ~ Y.logit, main = "Estimation")
+boxplot(VectorToMatrix(XD.hat, n, p) ~ Y.logit, main = "Estimation")
 plot(log(1 + data$Y[data$Y !=0]), log(1 + pred[data$Y != 0]), main = "Prediction") ; abline(0,1)
 
 
@@ -122,39 +123,6 @@ plot(log(1 + data$Y[data$Y !=0]), log(1 + pred[data$Y != 0]), main = "Prediction
 # Bfit$value
 
 
-
-
-
-
-
-
-
-
-
-
-
-# 
-# Selbo <- ELBOSophie(data, init$mStep, init$eStep)
-# Belbo <- ElboB(data, params, tolXi=tolXi)
-# 
-# plot(init$eStep$xi, Belbo$xi) ; abline(0,1)
-# plot(ComputeXi(data, init$mStep, init$eStep, tolXi=tolXi), Belbo$xi) ; abline(0,1)
-# 
-# cbind(ELBOSophie(data = data, init$mStep,  init$eStep), unlist(ElboB(data,params, tolXi)))
-# Selbo <- ELBO(data, init$mStep, init$eStep)
-# 
-# 
-# ## optim avec lowerbound
-# 
-# lb1 <- rep(-Inf, 2*d + q*(p+n) + 2)
-# lb2 <- rep(1e-04, n * q)
-# lb <- c(lb1, lb2)
-# sourceCpp("src/optim_rank_ZIP_lb.cpp")
-# 
-# config$lower_bounds <- lb
-# out_lb <- nlopt_optimize_ZIP_lb(data, params, config, tolXi)
-# out_lb$objective_values[length(out_lb$objective_values)]
-# out_lb$objective_values
 
 
 
