@@ -19,7 +19,7 @@ NuMuA <- function(data, mStep, eStep){
 
 ################################################################################
 # Init
-InitZiPLN <- function(data, q){
+InitZiPLN <- function(data, q, tolXi=1e-4){
   obs <- which(data$Omega==1)
   reg <- lm(as.vector(log(1+data$Y))[obs] ~ -1 + data$X[obs, ])
   res <- matrix(0, nrow(data$Y), ncol(data$Y))
@@ -34,7 +34,7 @@ InitZiPLN <- function(data, q){
                 # M=matrix(0, n, q), S=matrix(1e-4, n, q))
   
   eStep <- list(M=matrix(0, nrow(data$Y), q), S=matrix(1e-4, nrow(data$Y), q))
-  eStep$xi <- ComputeXi(data=data, mStep=mStep, eStep=eStep)
+  eStep$xi <- ComputeXi(data=data, mStep=mStep, eStep=eStep, tolXi)
   return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca, zip=zip))
 }
 OracleZiPLN <- function(data, latent){

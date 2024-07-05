@@ -10,7 +10,8 @@
 #include "packing.h"
 #include "utils.h"
 
-//----------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------
+
 // From matrix to vector
 
 // [[Rcpp::export]]
@@ -126,7 +127,6 @@ double entropie_logis(arma::mat & xi){
      return H ;
 }
 
-
 // [[Rcpp::export]]
 Rcpp::List ElboB_neg(const Rcpp::List & data, // List(Y, R, X)
                  const Rcpp::List & params, // List(B, C, M, S)
@@ -199,6 +199,7 @@ Rcpp::List ElboB_neg(const Rcpp::List & data, // List(Y, R, X)
        Rcpp::Named("nu", nu)
     );
 }
+
 
 // [[Rcpp::export]]
 Rcpp::List ElboBLogS(const Rcpp::List & data, // List(Y, R, X)
@@ -300,6 +301,7 @@ Rcpp::List nlopt_optimize_ZIP(
     }
     
     std::vector<double> objective_values;
+   
     
 
     // Optimize
@@ -311,8 +313,7 @@ Rcpp::List nlopt_optimize_ZIP(
         const arma::mat logS = metadata.map<logS_ID>(params);
         
     arma::mat S = exp(logS);
-        
-	
+    
     int n = Y.n_rows;
     int p = Y.n_cols;
     int q = M.n_cols;
@@ -329,14 +330,23 @@ Rcpp::List nlopt_optimize_ZIP(
     arma::mat log_fact_Y = log_factorial_matrix(Y);
     arma::mat pi = 1./(1. + exp(-nu));
     arma::vec vecpi = vectorise(pi);
-    arma::mat xi = ifelse_mat(Y, A, nu, R, 1e-04);
+    arma::mat xi = ifelse_mat(Y, A, nu, R, tolXi);
     arma::vec vecxi = vectorise(xi);
+    
 
- 
-       
-    double objective = - (accu(xi % nu - ifelse_exp(nu)) + accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y)) - 0.5 * accu(M % M + S - log(S)) + entropie_logis(xi) + 0.5 * n * q);
-
+    
+    double objective = - (accu(xi % nu - ifelse_exp(nu)) + 
+                        accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y)) - 
+                        0.5 * accu(M % M + S - log(S)) + 
+                        entropie_logis(xi) + 0.5 * n * q);
                         
+    
+    arma::mat gradB = - X.t() * (vecR % vecxi % (vecY - vecA));
+    arma::mat gradD = - X.t() * (vecR % (vecxi - vecpi));
+    arma::mat gradC = - (R % xi % (Y - A)).t() * M - (R % xi % A).t() * S % C;
+    arma::mat gradM = - (R % xi % (Y - A) * C - M);
+    arma::mat gradS = - 0.5 * (1. / S - 1. - R % xi % A * (C % C));
+                             
     
         objective_values.push_back(objective);
         std::cout<< objective << std::endl;

@@ -371,9 +371,3 @@ Rcpp::List nlopt_optimize_ZIP(
         ))
     );
 }
-
-
-
-
-
-
