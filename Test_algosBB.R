@@ -30,7 +30,7 @@ plot(init$eStep$S, params$S) ; abline(0,1)
 
 # Vérification gradients et ELBO
 
-mStep <- init$mStep ; eStep <- init$eStep
+mStep <- init$mStep ; eStep <- init$eStep ;  tolXi <- 1e-04
 
 Belbo_grad <- ElboB(data, params, tolXi)
 
@@ -63,7 +63,7 @@ plot(Belbo_grad$gradS, SgradS) ; abline(0,1)
 
 lb <- c(rep(-Inf, 2*d + q*(p+n)), rep(1e-06, n * q))
 
-config <- PLNPCA_param()$config_optim ; tolXi <- 1e-04
+config <- PLNPCA_param()$config_optim
 config$algorithm <- "MMA" # Par défaut dans config c'est "CCSAQ"
 config$lower_bounds <- lb # Si tu veux voir les résultats sans donner la lb il ne faut pas la mettre dans config
 # config$maxeval <- 5

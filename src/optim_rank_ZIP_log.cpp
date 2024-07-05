@@ -128,7 +128,7 @@ double entropie_logis(arma::mat & xi){
 
 
 // [[Rcpp::export]]
-Rcpp::List ElboB(const Rcpp::List & data, // List(Y, R, X)
+Rcpp::List ElboB_neg(const Rcpp::List & data, // List(Y, R, X)
                  const Rcpp::List & params, // List(B, C, M, S)
                  double tolXi
                 ) {
@@ -162,17 +162,17 @@ Rcpp::List ElboB(const Rcpp::List & data, // List(Y, R, X)
     
 
     
-    double objective = (accu(xi % nu - ifelse_exp(nu)) + 
+    double objective = - (accu(xi % nu - ifelse_exp(nu)) + 
                         accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y)) - 
                         0.5 * accu(M % M + S - log(S)) + 
                         entropie_logis(xi) + 0.5 * n * q);
                         
     
-    arma::mat gradB = X.t() * (vecR % vecxi % (vecY - vecA));
-    arma::mat gradD = X.t() * (vecR % (vecxi - vecpi));
-    arma::mat gradC = (R % xi % (Y - A)).t() * M - (R % xi % A).t() * S % C;
-    arma::mat gradM = (R % xi % (Y - A) * C - M);
-    arma::mat gradS = 0.5 * (1. / S - 1. - R % xi % A * (C % C));
+    arma::mat gradB = - X.t() * (vecR % vecxi % (vecY - vecA));
+    arma::mat gradD = - X.t() * (vecR % (vecxi - vecpi));
+    arma::mat gradC = - (R % xi % (Y - A)).t() * M - (R % xi % A).t() * S % C;
+    arma::mat gradM = - (R % xi % (Y - A) * C - M);
+    arma::mat gradS = - 0.5 * (1. / S - 1. - R % xi % A * (C % C));
     
     double elbo1 = accu(xi % nu - ifelse_exp(nu));
     double elbo2 = - 0.5 * accu(M % M + S);
@@ -265,38 +265,23 @@ Rcpp::List nlopt_optimize_ZIP(
     const auto init_D = Rcpp::as<arma::mat>(params["D"]); // (1,d) régresseurs pour la logistique
     const auto init_C = Rcpp::as<arma::mat>(params["C"]); // (p,q)
     const auto init_M = Rcpp::as<arma::mat>(params["M"]); // (n,q)
-    const auto init_S = Rcpp::as<arma::mat>(params["S"]); // (n,q)
+    const auto init_logS = Rcpp::as<arma::mat>(params["logS"]); // (n,q)
     
 
     
 
-    const auto metadata = tuple_metadata(init_B, init_D, init_C, init_M, init_S);
-    enum { B_ID, D_ID, C_ID, M_ID, S_ID }; // Names for metadata indexes
+    const auto metadata = tuple_metadata(init_B, init_D, init_C, init_M, init_logS);
+    enum { B_ID, D_ID, C_ID, M_ID, logS_ID }; // Names for metadata indexes
 
     auto parameters = std::vector<double>(metadata.packed_size);
     metadata.map<B_ID>(parameters.data()) = init_B;
     metadata.map<D_ID>(parameters.data()) = init_D;
     metadata.map<C_ID>(parameters.data()) = init_C;
     metadata.map<M_ID>(parameters.data()) = init_M;
-    metadata.map<S_ID>(parameters.data()) = init_S;
+    metadata.map<S_ID>(parameters.data()) = init_logS;
 
     auto optimizer = new_nlopt_optimizer(config, parameters.size());
-    
-    	  // Définition des bornes inférieures pour tous les paramètres
-    if (config.containsElementNamed("lower_bounds")) {
-        auto lower_bounds_r = Rcpp::as<std::vector<double>>(config["lower_bounds"]);
-        if (lower_bounds_r.size() != metadata.packed_size) {
-            Rcpp::stop("La taille du vecteur lower_bounds ne correspond pas à la taille totale des paramètres.");
-        }
-        std::vector<double> lower_bounds = lower_bounds_r;
 
-        // Application des bornes à l'optimiseur
-        nlopt_set_lower_bounds(optimizer.get(), lower_bounds.data());
-    } else {
-        std::vector<double> lower_bounds(metadata.packed_size, -HUGE_VAL);
-        nlopt_set_lower_bounds(optimizer.get(), lower_bounds.data());
-    }
-    
  
     if(config.containsElementNamed("xtol_abs")) {
         SEXP value = config["xtol_abs"];
@@ -309,7 +294,7 @@ Rcpp::List nlopt_optimize_ZIP(
             set_from_r_sexp(metadata.map<D_ID>(packed.data()), per_param_list["D"]);
             set_from_r_sexp(metadata.map<C_ID>(packed.data()), per_param_list["C"]);
             set_from_r_sexp(metadata.map<M_ID>(packed.data()), per_param_list["M"]);
-            set_from_r_sexp(metadata.map<S_ID>(packed.data()), per_param_list["S"]);
+            set_from_r_sexp(metadata.map<S_ID>(packed.data()), per_param_list["logS"]);
             set_per_value_xtol_abs(optimizer.get(), packed);
         }
     }
@@ -323,10 +308,12 @@ Rcpp::List nlopt_optimize_ZIP(
         const arma::mat D = metadata.map<D_ID>(params);
         const arma::mat C = metadata.map<C_ID>(params);
         const arma::mat M = metadata.map<M_ID>(params);
-        const arma::mat S = metadata.map<S_ID>(params);
+        const arma::mat logS = metadata.map<logS_ID>(params);
+        
+    arma::mat S = exp(logS);
         
 	
-	int n = Y.n_rows;
+    int n = Y.n_rows;
     int p = Y.n_cols;
     int q = M.n_cols;
     arma::vec XB = X * B;
@@ -345,14 +332,8 @@ Rcpp::List nlopt_optimize_ZIP(
     arma::mat xi = ifelse_mat(Y, A, nu, R, 1e-04);
     arma::vec vecxi = vectorise(xi);
 
-    double elbo1 = accu(xi % nu - ifelse_exp(nu));
-    double elbo2 = - 0.5 * accu(M % M + S);
-    double elbo3 = accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y));
-    double elbo4 = entropie_logis(xi);
-    double elbo5 = 0.5 * accu(0.5*log(S%S)) + n * q * 0.5;
-    
-    
-    
+ 
+       
     double objective = - (accu(xi % nu - ifelse_exp(nu)) + accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y)) - 0.5 * accu(M % M + S - log(S)) + entropie_logis(xi) + 0.5 * n * q);
 
                         
