@@ -19,7 +19,7 @@ NuMuA <- function(data, mStep, eStep){
 
 ################################################################################
 # Init
-InitZiPLN <- function(data, q, tolXi=1e-4){
+InitZiPLN <- function(data, q, tolXi=1e-4,initS = 1e-4){
   obs <- which(data$Omega==1)
   reg <- lm(as.vector(log(1+data$Y))[obs] ~ -1 + data$X[obs, ])
   res <- matrix(0, nrow(data$Y), ncol(data$Y))
@@ -33,7 +33,7 @@ InitZiPLN <- function(data, q, tolXi=1e-4){
   # eStep <- list(xi=matrix(sum(data$Omega*(data$Y > 0))/sum(data$Omega), n, p), 
                 # M=matrix(0, n, q), S=matrix(1e-4, n, q))
   
-  eStep <- list(M=matrix(0, nrow(data$Y), q), S=matrix(1e-4, nrow(data$Y), q))
+  eStep <- list(M=matrix(0, nrow(data$Y), q), S=matrix(initS, nrow(data$Y), q))
   eStep$xi <- ComputeXi(data=data, mStep=mStep, eStep=eStep, tolXi)
   return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca, zip=zip))
 }
