@@ -3,6 +3,7 @@ rm(list=ls()); par(mfrow=c(1, 1), pch=20); palette('R3')
 setwd("~/Documents/ZIP-PCA") # A changer
 library(Rcpp)
 library(PLNmodels)
+library(missForest)
 
 # seed <- .Random.seed
 source('codesSR/Functions/FunctionsUtils.R')
@@ -21,11 +22,11 @@ params <- list(B = as.matrix(init$mStep$beta),
                M = as.matrix(init$eStep$M), 
                S = as.matrix(init$eStep$S))
 
-plot(init$mStep$beta, params$B) ; abline(0,1)
-plot(init$mStep$gamma, params$D) ; abline(0,1)
-plot(init$mStep$C, params$C) ; abline(0,1)
-plot(init$eStep$M, params$M) ; abline(0,1)
-plot(init$eStep$S, params$S) ; abline(0,1)
+# plot(init$mStep$beta, params$B) ; abline(0,1)
+# plot(init$mStep$gamma, params$D) ; abline(0,1)
+# plot(init$mStep$C, params$C) ; abline(0,1)
+# plot(init$eStep$M, params$M) ; abline(0,1)
+# plot(init$eStep$S, params$S) ; abline(0,1)
 
 
 # Vérification gradients et ELBO
@@ -34,22 +35,22 @@ mStep <- init$mStep ; eStep <- init$eStep ;  tolXi <- 1e-04
 
 Belbo_grad <- ElboB(data, params, tolXi)
 
-Selbo <- ELBO(data=data, mStep=mStep, eStep=eStep)
-SgradS <- matrix(ElboGradVecS(Svec=as.vector(t(eStep$S)), data=data, mStep=mStep, eStep=eStep),n, q, byrow=TRUE)
-SgradM <- matrix(ElboGradVecM(Mvec=as.vector(t(eStep$M)), data=data, mStep=mStep, eStep=eStep),n, q, byrow=TRUE)
-SgradBeta <- ElboGradBeta(beta=mStep$beta, data=data, mStep=mStep, eStep=eStep)
-SgradGamma <- ElboGradGamma(gamma=mStep$gamma, data=data, mStep=mStep, eStep=eStep)
-SgradC <- as.matrix(ElboGradC(vecC=as.vector(mStep$C), data=data, mStep=mStep, eStep=eStep),p,q)
-
-Belbo_grad$objective ; Selbo
-
-plot(init$eStep$xi, Belbo_grad$xi) ; abline(0,1)
-
-plot(Belbo_grad$gradB, SgradBeta) ; abline(0,1)
-plot(Belbo_grad$gradD, SgradGamma) ; abline(0,1)
-plot(Belbo_grad$gradC, SgradC) ; abline(0,1)
-plot(Belbo_grad$gradM, SgradM) ; abline(0,1)
-plot(Belbo_grad$gradS, SgradS) ; abline(0,1)
+# Selbo <- ELBO(data=data, mStep=mStep, eStep=eStep)
+# SgradS <- matrix(ElboGradVecS(Svec=as.vector(t(eStep$S)), data=data, mStep=mStep, eStep=eStep),n, q, byrow=TRUE)
+# SgradM <- matrix(ElboGradVecM(Mvec=as.vector(t(eStep$M)), data=data, mStep=mStep, eStep=eStep),n, q, byrow=TRUE)
+# SgradBeta <- ElboGradBeta(beta=mStep$beta, data=data, mStep=mStep, eStep=eStep)
+# SgradGamma <- ElboGradGamma(gamma=mStep$gamma, data=data, mStep=mStep, eStep=eStep)
+# SgradC <- as.matrix(ElboGradC(vecC=as.vector(mStep$C), data=data, mStep=mStep, eStep=eStep),p,q)
+# 
+# Belbo_grad$objective ; Selbo
+# 
+# plot(init$eStep$xi, Belbo_grad$xi) ; abline(0,1)
+# 
+# plot(Belbo_grad$gradB, SgradBeta) ; abline(0,1)
+# plot(Belbo_grad$gradD, SgradGamma) ; abline(0,1)
+# plot(Belbo_grad$gradC, SgradC) ; abline(0,1)
+# plot(Belbo_grad$gradM, SgradM) ; abline(0,1)
+# plot(Belbo_grad$gradS, SgradS) ; abline(0,1)
 
 
 ## Comparaison avec optim
@@ -61,14 +62,16 @@ plot(Belbo_grad$gradS, SgradS) ; abline(0,1)
 # source("codesBB/FunctionsBB.R")
 
 
+data$Y.na <- prodNA(data$Y, 0.01)
+
 lb <- c(rep(-Inf, 2*d + q*(p+n)), rep(1e-06, n * q))
 
 config <- PLNPCA_param()$config_optim
 config$algorithm <- "MMA" # Par défaut dans config c'est "CCSAQ"
 config$lower_bounds <- lb # Si tu veux voir les résultats sans donner la lb il ne faut pas la mettre dans config
-# config$maxeval <- 5
+config$maxeval <- 45
 
-out <- Miss.ZIPPCA(Y = data$Y, X = data$X, q, params = params, config = config)
+out <- Miss.ZIPPCA(Y = data$Y, X = data$X, q, params = params, config = config, tolXi = 0)
 
 # vem <- VemZiPLN(data=data, init=init, iterMax=5e3)
 

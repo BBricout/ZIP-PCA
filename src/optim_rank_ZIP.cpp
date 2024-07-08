@@ -210,7 +210,8 @@ Rcpp::List ElboB(const Rcpp::List & data, // List(Y, R, X)
 Rcpp::List nlopt_optimize_ZIP(
     const Rcpp::List & data  , // List(Y, R, X)
     const Rcpp::List & params, // List(B, C, M, S)
-    const Rcpp::List & config  // List of config values
+    const Rcpp::List & config,  // List of config values
+    double tolXi
 ) {
     // Conversion from R, prepare optimization
     const arma::mat & Y = Rcpp::as<arma::mat>(data["Y"]); // responses (n,p)
@@ -273,7 +274,7 @@ Rcpp::List nlopt_optimize_ZIP(
     
 
     // Optimize
-    auto objective_and_grad = [&metadata, &X, &Y, &R, &objective_values](const double * params, double * grad) -> double {
+    auto objective_and_grad = [&metadata, &X, &Y, &R, &objective_values, tolXi](const double * params, double * grad) -> double {
         const arma::mat B = metadata.map<B_ID>(params);
         const arma::mat D = metadata.map<D_ID>(params);
         const arma::mat C = metadata.map<C_ID>(params);
@@ -297,7 +298,7 @@ Rcpp::List nlopt_optimize_ZIP(
     arma::mat log_fact_Y = log_factorial_matrix(Y);
     arma::mat pi = 1./(1. + exp(-nu));
     arma::vec vecpi = vectorise(pi);
-    arma::mat xi = ifelse_mat(Y, A, nu, R, 1e-04);
+    arma::mat xi = ifelse_mat(Y, A, nu, R, tolXi);
     arma::vec vecxi = vectorise(xi);
 
     double elbo1 = accu(xi % nu - ifelse_exp(nu));
@@ -313,7 +314,7 @@ Rcpp::List nlopt_optimize_ZIP(
                         
     
         objective_values.push_back(objective);
-        std::cout<< objective << std::endl;
+        std::cout << objective << std::endl;
         
 
         metadata.map<B_ID>(grad) = - X.t() * (vecR % vecxi % (vecY - vecA));
@@ -351,7 +352,7 @@ Rcpp::List nlopt_optimize_ZIP(
 	    arma::mat log_fact_Y = log_factorial_matrix(Y);
 	    arma::mat pi = 1./(1. + exp(-nu));
 	    arma::vec vecpi = vectorise(pi);
-	    arma::mat xi = ifelse_mat(Y, A, nu, R, 1e-04);
+	    arma::mat xi = ifelse_mat(Y, A, nu, R, tolXi);
 	    arma::vec vecxi = vectorise(xi);
   
 
