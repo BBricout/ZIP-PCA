@@ -4,10 +4,9 @@ library(PLNmodels)
 # seed <- .Random.seed
 source('codesSR/Functions/FunctionsUtils.R')
 source('codesSR/Functions/FunctionsZIPLNmiss.R')
-
 source('codesSR/Functions/FunctionsZIP.R')
-
 simDir <- 'SimulationsBB/datasim/'
+
 # Parms: many small sims
 n <- 100; d <- 5; p <- 10; q <- 2
 baseSimName <- 'ZiPLNsim'
@@ -25,12 +24,8 @@ seedX <- 1; set.seed(seedX)
 X0 <- matrix(rnorm(n*p*d), n*p, d); X0[, 1] <- 1; 
 baseSimName <- paste0(baseSimName, '-sameX', seedX)
 
-
-
-
 #############################################################
-set.seed(1)
-seed = 1
+seed <- 3; set.seed(seed)
 simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
 simNameFull <- paste0(baseSimName, simParmsFull)
 simFileFull <- paste0(simDir, simNameFull, '-noMiss.Rdata')
