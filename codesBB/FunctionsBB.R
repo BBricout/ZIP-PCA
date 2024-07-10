@@ -72,7 +72,8 @@ Miss.ZIPPCA <- function(Y, # Table de comptages n*p qui peut contenir des donné
   pred <- list(A = out$A, nu = nu, mu = mu)
   iter <- out$monitoring$iterations
   elboPath <- out$objective_values
-  elbo <- out$objective_values[length(out$objective_values)]
+  # elbo <- out$objective_values[length(out$objective_values)]
+  elbo <- out$objective
 
   
   res <- list(mStep = mStep, 

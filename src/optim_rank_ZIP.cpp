@@ -354,7 +354,9 @@ Rcpp::List nlopt_optimize_ZIP(
 	    arma::vec vecpi = vectorise(pi);
 	    arma::mat xi = ifelse_mat(Y, A, nu, R, tolXi);
 	    arma::vec vecxi = vectorise(xi);
-  
+	    
+	    double objective = - (accu(xi % nu - ifelse_exp(nu)) + accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y)) - 0.5 * accu(M % M + S - 0.5*log(S%S)) + entropie_logis(xi) + 0.5 * n * q);
+  	    
 
     return Rcpp::List::create(
         Rcpp::Named("B", B),
@@ -364,6 +366,7 @@ Rcpp::List nlopt_optimize_ZIP(
         Rcpp::Named("S", S),
         Rcpp::Named("A", A),
         Rcpp::Named("xi", xi),
+        Rcpp::Named("objective", objective),
         Rcpp::Named("objective_values", objective_values),
         Rcpp::Named("monitoring", Rcpp::List::create(
             Rcpp::Named("status", static_cast<int>(result.status)),
