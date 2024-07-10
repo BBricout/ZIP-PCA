@@ -14,10 +14,10 @@ source("codesBB/UtilsBB.R")
 # seed <- 2; set.seed(seed)
 q <- 2
 data <- SimZiPLN(n=100, p=10, d=5, q=q)
-load(file='ourfile.Rdata')
+# load(file='ourfile.Rdata')
 data$Y.na <- prodNA(data$Y, 0.33)
 data$R <- data$Omega <- ifelse(is.na(data$Y.na), 0, 1)
-data$Y <- data$Y*data$R
+# data$Y <- data$Y*data$R
 n <- nrow(data$Y); p <- ncol(data$Y); d <- ncol(data$X)
 
 # Function
@@ -54,27 +54,35 @@ print(c(elboB$objective, Selbo))
 sum(data$R==0)/prod(dim(data$R))
 
 # Optim BB
-tolS <- 1e-04
+tolS <- 1e-06
 config <- PLNPCA_param()$config_optim
 config$algorithm <- "MMA" # Par défaut dans config c'est "CCSAQ"
 lb <- c(rep(-Inf, 2*d + q*(p+n)), rep(tolS, n * q))
 config$lower_bounds <- lb # Si tu veux voir les résultats sans donner la lb il ne faut pas la mettre dans config
 iterMax <- config$maxeval <- 105
 fitBB1 <- Miss.ZIPPCA(Y=data$Y.na, X=data$X, q, params=parmInit, config=config, tolXi=tolXi)
+sapply(1:length(fitBB1$mStep), function(i){sum(is.na(fitBB1$mStep[[i]]))})
+sapply(1:length(fitBB1$eStep), function(i){sum(is.na(fitBB1$eStep[[i]]))})
+sapply(1:length(fitBB1$pred), function(i){sum(is.na(fitBB1$pred[[i]]))})
 iterMax <- config$maxeval <- 1e3
 fitBB2 <- Miss.ZIPPCA(Y=data$Y.na, X=data$X, q, params=parmInit, config=config, tolXi=tolXi)
+fitBB2$elbo
+sapply(1:length(fitBB2$mStep), function(i){sum(is.na(fitBB2$mStep[[i]]))})
+sapply(1:length(fitBB2$eStep), function(i){sum(is.na(fitBB2$eStep[[i]]))})
+sapply(1:length(fitBB2$pred), function(i){sum(is.na(fitBB2$pred[[i]]))})
 plot(fitBB1$elboPath, log='y', ylim=c(1, 1e5))
 
-# # Pb divergence
-# parmFit1 <- Fit2Parms(mStep=fitBB1$mStep, eStep=fitBB1$eStep)
-# parmFit2 <- Fit2Parms(mStep=fitBB2$mStep, eStep=fitBB2$eStep)
-# par(mfrow=c(3, 2))
-# for(i in 1:length(parmFit1)){plot(parmFit1[[i]], parmFit2[[i]]); abline(0,1)}
-# elboB1 <- ElboB(data=data, params=parmFit1, tolXi=tolXi)
-# sapply(1:length(elboB1), function(i){sum(is.na(elboB1[[i]]))})
-# elboB2 <- ElboB(data=data, params=parmFit2, tolXi=tolXi)
-# sapply(1:length(elboB2), function(i){sum(is.na(elboB2[[i]]))})
-# print(c(elboB$objective, elboB1$objective, elboB2$objective))
+# Pb divergence
+parmFit1 <- Fit2Parms(mStep=fitBB1$mStep, eStep=fitBB1$eStep)
+parmFit2 <- Fit2Parms(mStep=fitBB2$mStep, eStep=fitBB2$eStep)
+par(mfrow=c(3, 2))
+for(i in 1:length(parmFit1)){plot(parmFit1[[i]], parmFit2[[i]]); abline(0,1)}
+boxplot(1+as.vector(data$Y) ~ as.vector(data$R), log='y')
+elboB1 <- ElboB(data=data, params=parmFit1, tolXi=tolXi)
+sapply(1:length(elboB1), function(i){sum(is.na(elboB1[[i]]))})
+elboB2 <- ElboB(data=data, params=parmFit2, tolXi=tolXi)
+sapply(1:length(elboB2), function(i){sum(is.na(elboB2[[i]]))})
+print(c(elboB$objective, elboB1$objective, elboB2$objective))
 
 # # Optim SR
 # theta <- Mstep2Theta(mStep, n=n, d=d, p=p, q=q)
