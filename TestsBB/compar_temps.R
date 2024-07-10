@@ -8,7 +8,7 @@ library(PLNmodels)
 source('codesSR/Functions/FunctionsUtils.R')
 source('codesSR/Functions/FunctionsZIPLNmiss.R')
 
-source("FunctionsBB.R")
+source("codesBB/FunctionsBB.R")
 
 simDir <- 'SimulationsBB/datasim/'
 # Parms: many small sims
@@ -102,7 +102,7 @@ SgradBeta <- ElboGradBeta(beta=mStep$beta, data=data, mStep=mStep, eStep=eStep)
 SgradGamma <- ElboGradGamma(gamma=mStep$gamma, data=data, mStep=mStep, eStep=eStep)
 SgradC <- as.matrix(ElboGradC(vecC=as.vector(mStep$C), data=data, mStep=mStep, eStep=eStep),p,q)
 
-ElboBfun <- ElboB(data=data, params=params)
+ElboBfun <- ElboB(data=data, params=params, tolXi = 0)
 ElboBfun$objective
 Belbo <- ElboBfun$objective
 BgradS <- ElboBfun$gradS
@@ -165,25 +165,25 @@ Parms2Params <- function(parms, data){
                  M=as.matrix(steps$e$M), 
                  S=as.matrix(steps$e$S)))
 }
-Bobj <- function(parms, data){
+Bobj <- function(parms, data, tolXi){
   params <- Parms2Params(parms=parms, data=data)
-  ElboB(data=data, params=params, tolXi = 1e-04)$obj
+  ElboB(data=data, params=params, tolXi)$obj
 }
-Bgrad <- function(parms, data){
+Bgrad <- function(parms, data, tolXi){
   params <- Parms2Params(parms=parms, data=data)
-  elbo <- ElboB(data=data, params=params, tolXi = 1e-04)
+  elbo <- ElboB(data=data, params=params, tolXi)
   c(as.vector(elbo$gradD), as.vector(elbo$gradB), as.vector(elbo$gradC), 
     as.vector(t(elbo$gradM)), as.vector(t(elbo$gradS)))
 }
-BobjLogS <- function(parmsLogS, data){
+BobjLogS <- function(parmsLogS, data, tolXi){
   params <- Parms2Params(parms=parmsLogS, data=data)
   params$S <- exp(params$S)
-  ElboB(data=data, params=params)$obj
+  ElboB(data=data, params=params, tolXi)$obj
 }
-BgradLogS <- function(parmsLogS, data){
+BgradLogS <- function(parmsLogS, data, tolXi){
   params <- Parms2Params(parms=parmsLogS, data=data)
   params$S <- exp(params$S)
-  elbo <- ElboB(data=data, params=params)
+  elbo <- ElboB(data=data, params=params, tolXi)
   c(as.vector(elbo$gradD), as.vector(elbo$gradB), as.vector(elbo$gradC),
     as.vector(t(elbo$gradM)), as.vector(t(elbo$gradS))*as.vector(t(params$S)))
 }
@@ -195,14 +195,18 @@ parmsLogSInit <- c(mStep$gamma, mStep$beta, as.vector(mStep$C),
 
 paramsLogS <- Parms2Params(parms = parmsLogSInit, data)
 
-source("FunctionsBB.R")
 
 paramsLogS$logS <- paramsLogS$S
 
-BobjLogS(parmsLogSInit, data)
-gradLog <- Parms2Params(BgradLogS(parmsLogSInit, data), data)
+BobjLogS(parmsLogSInit, data, tolXi = 0)
+grad <- Parms2Params(Bgrad(parmsInit, data, tolXi = 0), data)
+gradLog <- Parms2Params(BgradLogS(parmsLogSInit, data, tolXi = 0), data)
 test <- ElboBLogS(data, paramsLogS)
 plot(test$gradM, ElboB(data, params)$gradM) ; abline(0,1)
+
+par(mfrow=c(1, 1), pch=20)
+
+plot(grad$S, gradLog$S) ; abline(0,1)
 
 ElboB(data, params)$objective
 

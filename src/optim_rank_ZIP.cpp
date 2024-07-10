@@ -282,7 +282,7 @@ Rcpp::List nlopt_optimize_ZIP(
         const arma::mat S = metadata.map<S_ID>(params);
         
 	
-	int n = Y.n_rows;
+    int n = Y.n_rows;
     int p = Y.n_cols;
     int q = M.n_cols;
     arma::vec XB = X * B;
@@ -314,7 +314,7 @@ Rcpp::List nlopt_optimize_ZIP(
                         
     
         objective_values.push_back(objective);
-        std::cout << objective << std::endl;
+        std::cout << xi % nu - ifelse_exp(nu) << std::endl;
         
 
         metadata.map<B_ID>(grad) = - X.t() * (vecR % vecxi % (vecY - vecA));
