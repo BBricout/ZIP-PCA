@@ -9,7 +9,8 @@ library(matrixcalc)
 library(missMDA)
 library(PLNmodels)
 
-sourceCpp("src/optim_rank_ZIP.cpp")
+sourceCpp("src/optim_rank_zip_log_new.cpp")
+sourceCpp("src/optim_rank_ZIP_new.cpp")
 
 #---------Initialisations-------------
 
@@ -62,7 +63,7 @@ Miss.ZIPPCA <- function(Y, # Table de comptages n*p qui peut contenir des donné
                R = R,
                X = X)
   
-  out <- nlopt_optimize_ZIP(data, params, config)
+  out <- nlopt_optimize_ZIP(data, params, config, tolXi)
   
   mu <- VectorToMatrix(X%*%out$B, n, p)
   nu <- VectorToMatrix(X%*%out$D, n, p)
@@ -72,8 +73,62 @@ Miss.ZIPPCA <- function(Y, # Table de comptages n*p qui peut contenir des donné
   pred <- list(A = out$A, nu = nu, mu = mu)
   iter <- out$monitoring$iterations
   elboPath <- out$objective_values
-  elbo <- out$objective_values[length(out$objective_values)]
+  # elbo <- out$objective_values[length(out$objective_values)]
+  elbo <- out$objective
 
+  
+  res <- list(mStep = mStep, 
+              eStep = eStep, 
+              pred = pred, 
+              iter = iter, 
+              elboPath = elboPath, 
+              elbo = elbo,
+              params.init = params,
+              monitoring = out$monitoring)
+  
+  return(res)
+  
+}
+
+Miss.ZIPPCA.logS <- function(Y, # Table de comptages n*p qui peut contenir des données manquantes
+                        X, # Covariables np*d dont une colonne de 1 pour l'intercept
+                        q, # Dimension de l'espace latent q
+                        params = NULL, # Paramètres fourni en entrée
+                        config = NULL,
+                        tolXi = NULL){
+  
+  n <- nrow(Y)
+  p <- ncol(Y)
+  
+  if (is.null(params)){params <- Init_ZIP(Y, X, q)}
+  if (is.null(config)){config <- PLNPCA_param()$config_optim}
+  if (is.null(tolXi)){tolXi <- 1e-4}
+  
+  logS <- log(params$S)
+  
+  R <- ifelse(is.na(Y), 0, 1) # Masque qui met des 0 à la place des données manquantes
+  
+  Y.na <- ifelse(R == 0, 0, Y)
+  
+  data <- list(Y = Y.na,
+               R = R,
+               X = X)
+  
+  params$logS <- logS
+  
+  out <- nlopt_optimize_ZIP_logS(data, params, config, tolXi)
+  
+  mu <- VectorToMatrix(X%*%out$B, n, p)
+  nu <- VectorToMatrix(X%*%out$D, n, p)
+  
+  mStep <- list(gamma = out$D, beta = out$B, C = out$C)
+  eStep <- list(M = out$M, S = out$S,  xi = out$xi)
+  pred <- list(A = out$A, nu = nu, mu = mu)
+  iter <- out$monitoring$iterations
+  elboPath <- out$objective_values
+  # elbo <- out$objective_values[length(out$objective_values)]
+  elbo <- out$objective
+  
   
   res <- list(mStep = mStep, 
               eStep = eStep, 

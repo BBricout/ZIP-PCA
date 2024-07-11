@@ -210,7 +210,8 @@ Rcpp::List ElboB(const Rcpp::List & data, // List(Y, R, X)
 Rcpp::List nlopt_optimize_ZIP(
     const Rcpp::List & data  , // List(Y, R, X)
     const Rcpp::List & params, // List(B, C, M, S)
-    const Rcpp::List & config  // List of config values
+    const Rcpp::List & config,  // List of config values
+    double tolXi
 ) {
     // Conversion from R, prepare optimization
     const arma::mat & Y = Rcpp::as<arma::mat>(data["Y"]); // responses (n,p)
@@ -273,7 +274,7 @@ Rcpp::List nlopt_optimize_ZIP(
     
 
     // Optimize
-    auto objective_and_grad = [&metadata, &X, &Y, &R, &objective_values](const double * params, double * grad) -> double {
+    auto objective_and_grad = [&metadata, &X, &Y, &R, &objective_values, tolXi](const double * params, double * grad) -> double {
         const arma::mat B = metadata.map<B_ID>(params);
         const arma::mat D = metadata.map<D_ID>(params);
         const arma::mat C = metadata.map<C_ID>(params);
@@ -281,7 +282,7 @@ Rcpp::List nlopt_optimize_ZIP(
         const arma::mat S = metadata.map<S_ID>(params);
         
 	
-	int n = Y.n_rows;
+    int n = Y.n_rows;
     int p = Y.n_cols;
     int q = M.n_cols;
     arma::vec XB = X * B;
@@ -297,7 +298,7 @@ Rcpp::List nlopt_optimize_ZIP(
     arma::mat log_fact_Y = log_factorial_matrix(Y);
     arma::mat pi = 1./(1. + exp(-nu));
     arma::vec vecpi = vectorise(pi);
-    arma::mat xi = ifelse_mat(Y, A, nu, R, 1e-04);
+    arma::mat xi = ifelse_mat(Y, A, nu, R, tolXi);
     arma::vec vecxi = vectorise(xi);
 
     double elbo1 = accu(xi % nu - ifelse_exp(nu));
@@ -313,7 +314,7 @@ Rcpp::List nlopt_optimize_ZIP(
                         
     
         objective_values.push_back(objective);
-        std::cout<< objective << std::endl;
+        std::cout << xi % nu - ifelse_exp(nu) << std::endl;
         
 
         metadata.map<B_ID>(grad) = - X.t() * (vecR % vecxi % (vecY - vecA));
@@ -351,9 +352,11 @@ Rcpp::List nlopt_optimize_ZIP(
 	    arma::mat log_fact_Y = log_factorial_matrix(Y);
 	    arma::mat pi = 1./(1. + exp(-nu));
 	    arma::vec vecpi = vectorise(pi);
-	    arma::mat xi = ifelse_mat(Y, A, nu, R, 1e-04);
+	    arma::mat xi = ifelse_mat(Y, A, nu, R, tolXi);
 	    arma::vec vecxi = vectorise(xi);
-  
+	    
+	    double objective = - (accu(xi % nu - ifelse_exp(nu)) + accu(R % xi % (Y % (mu + M*C.t()) - A - log_fact_Y)) - 0.5 * accu(M % M + S - 0.5*log(S%S)) + entropie_logis(xi) + 0.5 * n * q);
+  	    
 
     return Rcpp::List::create(
         Rcpp::Named("B", B),
@@ -363,6 +366,7 @@ Rcpp::List nlopt_optimize_ZIP(
         Rcpp::Named("S", S),
         Rcpp::Named("A", A),
         Rcpp::Named("xi", xi),
+        Rcpp::Named("objective", objective),
         Rcpp::Named("objective_values", objective_values),
         Rcpp::Named("monitoring", Rcpp::List::create(
             Rcpp::Named("status", static_cast<int>(result.status)),

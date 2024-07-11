@@ -13,6 +13,7 @@ load(file='ourfile.Rdata')
 # seed <- .Random.seed
 library(Rcpp)
 library(PLNmodels)
+library(missForest)
 
 #--- Codes step
 source('codesSR/Functions/FunctionsUtils.R')
@@ -24,8 +25,9 @@ source("codesBB/FunctionsBB.R")
 source("codesBB/UtilsBB.R")
 
 
-
-
+data$Y.na <- prodNA(data$Y, 0.1)
+data$R <- data$Omega <- ifelse(is.na(data$Y.na), 0,1)
+# data$Y <- data$Y * data$R
 
 
 #names(data)
@@ -50,10 +52,10 @@ d <- ncol(data$X)
                       
                       
 ################### INIT with méthode de stéphane
-tolXi <- 1e-06
+tolXi <- 1e-04
 initS <- 1e-01
 #-----------init Stephane
-init <- InitZiPLN(data,q,tolXi,initS = ) 
+init <- InitZiPLN(data,q,tolXi,initS) 
 params <- list(B = as.matrix(init$mStep$beta), 
                 D = as.matrix(init$mStep$gamma), 
                 C = as.matrix(init$mStep$C), 
@@ -61,11 +63,11 @@ params <- list(B = as.matrix(init$mStep$beta),
                 S = as.matrix(init$eStep$S))
 
 
-plot(init$mStep$beta, params$B) ; abline(0,1)
-plot(init$mStep$gamma, params$D) ; abline(0,1)
-plot(init$mStep$C, params$C) ; abline(0,1)
-plot(init$eStep$M, params$M) ; abline(0,1)
-plot(init$eStep$S, params$S) ; abline(0,1)
+# plot(init$mStep$beta, params$B) ; abline(0,1)
+# plot(init$mStep$gamma, params$D) ; abline(0,1)
+# plot(init$mStep$C, params$C) ; abline(0,1)
+# plot(init$eStep$M, params$M) ; abline(0,1)
+# plot(init$eStep$S, params$S) ; abline(0,1)
 
 
 #############################################
@@ -73,6 +75,27 @@ plot(init$eStep$S, params$S) ; abline(0,1)
 
 
 #---------- Barbara
+
+
+
+# Selbo <- ELBO(data=data, mStep=mStep, eStep=eStep)
+# SgradS <- matrix(ElboGradVecS(Svec=as.vector(t(eStep$S)), data=data, mStep=mStep, eStep=eStep),n, q, byrow=TRUE)
+# SgradM <- matrix(ElboGradVecM(Mvec=as.vector(t(eStep$M)), data=data, mStep=mStep, eStep=eStep),n, q, byrow=TRUE)
+# SgradBeta <- ElboGradBeta(beta=mStep$beta, data=data, mStep=mStep, eStep=eStep)
+# SgradGamma <- ElboGradGamma(gamma=mStep$gamma, data=data, mStep=mStep, eStep=eStep)
+# SgradC <- as.matrix(ElboGradC(vecC=as.vector(mStep$C), data=data, mStep=mStep, eStep=eStep),p,q)
+# 
+# Belbo_grad$objective ; Selbo
+# 
+# plot(init$eStep$xi, Belbo_grad$xi) ; abline(0,1)
+# 
+# plot(Belbo_grad$gradB, SgradBeta) ; abline(0,1)
+# plot(Belbo_grad$gradD, SgradGamma) ; abline(0,1)
+# plot(Belbo_grad$gradC, SgradC) ; abline(0,1)
+# plot(Belbo_grad$gradM, SgradM) ; abline(0,1)
+# plot(Belbo_grad$gradS, SgradS) ; abline(0,1)
+
+
 Belbo_grad <- ElboB(data, params, tolXi)
 
 #---------- Stephane
@@ -84,7 +107,12 @@ SgradBeta <- ElboGradBeta(beta=mStep$beta, data=data, mStep=mStep, eStep=eStep)
 SgradGamma <- ElboGradGamma(gamma=mStep$gamma, data=data, mStep=mStep, eStep=eStep)
 SgradC <- as.matrix(ElboGradC(vecC=as.vector(mStep$C), data=data, mStep=mStep, eStep=eStep),p,q)
 
-res_ELBO <- c(Belbo_grad$objective , Selbo)
+plot(Belbo_grad$xi, init$eStep$xi)
+
+# unlist(Belbo_grad[-1])
+#Selbo
+
+res_ELBO <- c(Belbo_grad$objective , Selbo[6])
 names(res_ELBO) = c('B','S')
 print(res_ELBO)
 
@@ -96,6 +124,7 @@ plot(Belbo_grad$gradM, SgradM) ; abline(0,1)
 plot(Belbo_grad$gradS, SgradS) ; abline(0,1)
 
 
+
 ## Comparaison avec optim
 
 
@@ -105,14 +134,15 @@ plot(Belbo_grad$gradS, SgradS) ; abline(0,1)
 # source("codesBB/FunctionsBB.R")
 
 
+
 lb <- c(rep(-Inf, 2*d + q*(p+n)), rep(1e-06, n * q))
 
 config <- PLNPCA_param()$config_optim
 config$algorithm <- "MMA" # Par défaut dans config c'est "CCSAQ"
 config$lower_bounds <- lb # Si tu veux voir les résultats sans donner la lb il ne faut pas la mettre dans config
-# config$maxeval <- 5
+# config$maxeval <- 
 
-out <- Miss.ZIPPCA(Y = data$Y, X = data$X, q, params = params, config = config)
+out <- Miss.ZIPPCA(Y = data$Y.na, X = data$X, q, params = params, config = config, tolXi)
 
 #vem <- VemZiPLN(data=data, init=init, iterMax=5e3)
 
@@ -144,6 +174,7 @@ Y.logit <- ifelse(data$Y == 0, 0, 1)
 #--------------- ELBO 
 par(mfrow=c(1, 1))
 plot(out$elboPath[out$elboPath< -1*Belbo_grad$objective],type='l', main = "ELBO path",ylab='ELBO',xlab='iter')
+plot(D.hat, params$D) ; abline(0,1)
 
 #----------------- Estimations
 

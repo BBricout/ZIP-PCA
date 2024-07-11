@@ -1,3 +1,6 @@
+#pragma once
+
+
 #include "RcppArmadillo.h"
 #include <cmath>
 #include <iostream>
@@ -10,8 +13,7 @@
 #include "packing.h"
 #include "utils.h"
 
-
-
+//----------------------------------------------------------------------------------------
 // From matrix to vector
 
 // [[Rcpp::export]]
@@ -87,7 +89,6 @@ arma::mat ifelse_mat(const arma::mat& Y, const arma::mat& A, const arma::mat& nu
    return xi;
 }
 
-
 arma::mat ifelse_exp(const arma::mat& nu){
     int n = nu.n_rows;
     int p = nu.n_cols;
@@ -96,7 +97,7 @@ arma::mat ifelse_exp(const arma::mat& nu){
     
     for (size_t i = 0; i < n; ++i) {
         for (size_t j = 0; j < p; ++j) {
-            if (nu(i,j) <= 0.) {
+            if (nu(i,j) <= 0) {
                 F(i,j) = log(exp(nu(i,j)) + 1.);
             } else {
                 F(i,j) = log((1. + exp(-nu(i,j)))/exp(-nu(i,j)));
@@ -113,7 +114,7 @@ double entropie_logis(arma::mat & xi){
     int n = xi.n_rows;
     int p = xi.n_cols;
     
-    double H = 0;
+    double H = 0.;
     
     for (size_t i = 0; i < n; ++i) {
     	for (size_t j = 0; j < p; ++j){
