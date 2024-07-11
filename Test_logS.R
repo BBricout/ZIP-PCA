@@ -6,8 +6,8 @@ library(PLNmodels)
 
 source("codesBB/UtilsBB.R")
 source("Data_create.R")
-sourceCpp("src/optim_rank_ZIP_log.cpp")
-sourceCpp("src/optim_rank_ZIP.cpp")
+sourceCpp("src/optim_rank_zip_log_new.cpp")
+sourceCpp("src/optim_rank_ZIP_new.cpp")
 
 #########################################################
 ######## Paramètres initiaux ###########################
@@ -36,19 +36,18 @@ parmsLogSInit <- c(init$mStep$gamma, init$mStep$beta, as.vector(init$mStep$C),
 ## Tests sur les calculs d'Elbo et de gradient
 
 
-obj_ref <- ElboB(data, params, tolXi)
-obj_neg <- ElboB_neg(data, params, tolXi)
-obj_log <- ElboBLogS(data, paramsLogS, tolXi)
+obj_ref <- Elbo_grad_Rcpp(data, params, tolXi)
+obj_log <- Elbo_grad_logS_Rcpp(data, paramsLogS, tolXi)
 
 BobjLogS <- function(parmsLogS, data){
   params <- Parms2Params(parms=parmsLogS, data=data)
   params$S <- exp(params$S)
-  ElboB(data=data, params=params, tolXi)$obj
+  Elbo_grad_Rcpp(data=data, params=params, tolXi)$obj
 }
 BgradLogS <- function(parmsLogS, data){
   params <- Parms2Params(parms=parmsLogS, data=data)
   params$S <- exp(params$S)
-  elbo <- ElboB(data=data, params=params, tolXi)
+  elbo <- Elbo_grad_Rcpp(data=data, params=params, tolXi)
   c(as.vector(elbo$gradD), as.vector(elbo$gradB), as.vector(elbo$gradC),
     as.vector(t(elbo$gradM)), as.vector(t(elbo$gradS))*as.vector(t(params$S)))
 }
@@ -58,11 +57,11 @@ obj_Ste <- BobjLogS(parmsLogSInit, data)
 grad_Ste <- BgradLogS(parmsLogSInit, data)
 grad_ref <- Parms2Params(grad_Ste, data)
 
-plot(obj_neg$gradB, obj_log$gradB) ; abline(0,1)
-plot(obj_neg$gradC, obj_log$gradC) ; abline(0,1)
-plot(obj_neg$gradD, obj_log$gradD) ; abline(0,1)
-plot(obj_neg$gradM, obj_log$gradM) ; abline(0,1)
-plot(grad_ref$S, -obj_log$gradS) ; abline(0,1)
+plot(obj_ref$gradB, obj_log$gradB) ; abline(0,1)
+plot(obj_ref$gradC, obj_log$gradC) ; abline(0,1)
+plot(obj_ref$gradD, obj_log$gradD) ; abline(0,1)
+plot(obj_ref$gradM, obj_log$gradM) ; abline(0,1)
+plot(grad_ref$S, obj_log$gradS) ; abline(0,1)
 
 ################################################################################
 ############### Tests de l'algo ##############################################
@@ -90,7 +89,7 @@ XD.init <- VectorToMatrix(data$X %*% params$D, n, p)
 
 
 pred.init <- pred <- exp(XB.init) #  + params$M %*% t(params$C) + 0.5 * (params$S*params$S) %*% t(params$C * params$C))
-pred <- exp(XB.hat + M.hat %*% t(C.hat) + 0.5 * (S.hat*S.hat) %*% t(C.hat * C.hat))
+pred <- exp(XB.hat + M.hat %*% t(C.hat) + 0.5 * (exp(S.hat)*exp(S.hat)) %*% t(C.hat * C.hat))
 
 Y.logit <- ifelse(data$Y == 0, 0, 1)
 
