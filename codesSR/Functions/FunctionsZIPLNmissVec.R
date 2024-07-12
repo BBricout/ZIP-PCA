@@ -24,6 +24,9 @@ ElboVecThetaPsi <- function(thetaPsi, data, q, tolXi=1e-4){
   eStep$xi <- ComputeXi(data=data, mStep=mStep, eStep=eStep, tolXi=tolXi)
   ELBO(data=data, mStep=mStep, eStep=eStep)
 }
+NegElboVecThetaPsi <- function(thetaPsi, data, q, tolXi=1e-4){
+  -ElboVecThetaPsi(thetaPsi=thetaPsi, data=data, q=q, tolXi=tolXi)
+}
 
 ################################################################################
 # ELBO grad
@@ -72,6 +75,9 @@ ElboGradVecThetaPsi <- function(thetaPsi, data, q, tolXi=1e-4){
   eStep$xi <- ComputeXi(data=data, mStep=mStep, eStep=eStep, tolXi=tolXi)
   c(ElboGradVecTheta(theta, data, eStep), ElboGradVecPsi(psi, data, mStep))
 }
+NegElboGradVecThetaPsi <- function(thetaPsi, data, q, tolXi=1e-4){
+  -ElboGradVecThetaPsi(thetaPsi=thetaPsi, data=data, q=q, tolXi=tolXi)
+}
 
 ################################################################################
 # ELBO + Grad : log(S) versions
@@ -85,6 +91,10 @@ ElboLogSVecThetaPsi <- function(thetaPsiLogS, data, q, tolXi=1e-4){
   eStep$xi <- ComputeXi(data=data, mStep=mStep, eStep=eStep, tolXi=tolXi)
   ELBO(data=data, mStep=mStep, eStep=eStep)
 }
+NegElboLogSVecThetaPsi <- function(thetaPsiLogS, data, q, tolXi=1e-4){
+  -ElboLogSVecThetaPsi(thetaPsiLogS=thetaPsiLogS, data=data, q=q, tolXi=tolXi)
+}
+
 ElboLogSGradVecThetaPsi <- function(thetaPsiLogS, data, q, tolXi=1e-4){
   theta <- thetaPsiLogS[1:((2*d)+(p*q))]
   mStep <- Theta2Mstep(theta, n=n, d=d, p=p, q=q)
@@ -95,6 +105,9 @@ ElboLogSGradVecThetaPsi <- function(thetaPsiLogS, data, q, tolXi=1e-4){
   gradTheta <- ElboGradVecTheta(theta, data, eStep)
   gradPsi <- ElboGradVecPsi(psi, data, mStep) * c(rep(1, n*q), psi[(n*q)+(1:(n*q))])
   return(c(gradTheta, gradPsi))
+}
+NegElboLogSGradVecThetaPsi <- function(thetaPsiLogS, data, q, tolXi=1e-4){
+  -ElboLogSGradVecThetaPsi(thetaPsiLogS=thetaPsiLogS, data=data, q=q, tolXi=tolXi)
 }
 
 ################################################################################

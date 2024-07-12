@@ -68,7 +68,7 @@ ELBOi <- function(datai, mStep, eStepi){
   S2i <- - 0.5*(sum(eStepi$mi^2) + sum(eStepi$Si))
   S3i <- sum(datai$Omegai * eStepi$xii * (-Ai + datai$Yi*(mui + mStep$C%*%eStepi$mi) - datai$logFactYi))
   xii <- eStepi$xii[which(eStepi$xii*(1-eStepi$xii) > 0)]
-  S4i <- sum(xii * log(xii/(1 - xii)) + log(1 - xii)) 
+  S4i <- - sum(xii * log(xii/(1 - xii)) + log(1 - xii)) 
   S5i <- 0.5*(length(eStepi$mi) + sum(log(eStepi$Si)))
   elboi = S1i + S2i + S3i + S4i+ S5i
   # return(c(S1i,S2i,S3i,S4i,S5i,elboi))
