@@ -11,7 +11,7 @@ simDir <- '../../simulSR/'
 resDir <- './'
 
 # Data
-n <- 100; d <- 5; p <- 10; q <- 2; seed <- 1; obs <- 1
+n <- 100; d <- 5; p <- 10; q <- 2; seed <- 5; obs <- 1
 simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
 simParms <- paste0(simParmsFull, '-obs', 100*obs)
 simName <- paste0('ZiPLNsim', simParms)
@@ -19,7 +19,7 @@ simFile <- paste0(simDir, simName, '.Rdata')
 load(simFile)
 
 # Algo parms
-iMiss <- 5; jMiss <- 5; ijMiss <- c(iMiss, jMiss)
+iMiss <- 22; jMiss <- 3; ijMiss <- c(iMiss, jMiss)
 tolXi <- 0; tolS <- 1e-6
 
 # Data sets
@@ -46,12 +46,12 @@ eStepiMiss <- list(xii=eStep$xi[iMiss, ],
                    Si=as.vector(eStep$S[iMiss, , drop=FALSE]))
 
 # ELBO
-ELBO(data=dataMissRow, mStep=mStep, eStep=eStep) 
-ELBO(data=dataAbsRow, mStep=mStep, eStep=eStepAbsRow) 
-ELBOi(datai=dataiMiss, mStep=mStep, eStepi=eStepiMiss)
+elboMissRow <- ELBO(data=dataMissRow, mStep=mStep, eStep=eStep) 
+elboAbsRow <- ELBO(data=dataAbsRow, mStep=mStep, eStep=eStepAbsRow) 
+elboImiss <- ELBOi(datai=dataiMiss, mStep=mStep, eStepi=eStepiMiss)
+c(elboMissRow, elboAbsRow, elboImiss, elboMissRow - elboAbsRow - elboImiss)
 
 # Compare
-eStep$M[iMiss, ]
-eStep$S[iMiss, ]
-eStep$xi[iMiss, ]
-as.vector(plogis(data$X[which(data$ij[, 1] %in% iMiss), ]%*%mStep$gamma))
+rbind(eStep$M[iMiss, ], eStep$S[iMiss, ])
+rbind(eStep$xi[iMiss, ], 
+      as.vector(plogis(data$X[which(data$ij[, 1] %in% iMiss), ]%*%mStep$gamma)))

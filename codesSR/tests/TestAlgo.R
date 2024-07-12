@@ -11,7 +11,7 @@ simDir <- '../../simulSR/'
 resDir <- './'
 
 # Data
-n <- 100; d <- 5; p <- 10; q <- 2; seed <- 1; obs <- 1
+n <- 100; d <- 5; p <- 10; q <- 2; seed <- 2; obs <- 0.50
 simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
 simParms <- paste0(simParmsFull, '-obs', 100*obs)
 simName <- paste0('ZiPLNsim', simParms)
@@ -23,7 +23,7 @@ iterMax <- 1e3; tolS <- 1e-6; tolXi <- 0
 lb <- c(rep(-Inf, 2*d + q*(p+n)), rep(tolS, n * q))
 lbAbs <- c(rep(-Inf, 2*d + q*(p+n-1)), rep(tolS, (n-1) * q))
 iMiss <- 5; jMiss <- 5; ijMiss <- c(iMiss, jMiss)
-algoName <- paste0(simName, 'tolS', tolS, '-tolXi', tolXi)
+algoName <- paste0(simName, '-tolS', tolS, '-tolXi', tolXi)
 
 # Data sets
 dataFull <- dataMiss1 <- dataMissRow <- dataAbsRow <- data; 
@@ -38,7 +38,6 @@ dataAbsRow$ij <- cbind(rep(1:(n-1), p), rep(1:p, each=(n-1)))
 #################################################################################
 # Init
 #################################################################################
-Init2Log2 <- function(init){init$eStep$S <- log(init$eStep$S); return(init)}
 initFull <- InitZiPLN(data=dataFull, q=q, tolXi=tolXi)
 initMiss1 <- InitZiPLN(data=dataMiss1, q=q, tolXi=tolXi)
 initMissRow <- InitZiPLN(data=dataMissRow, q=q, tolXi=tolXi)
@@ -80,10 +79,11 @@ if(!file.exists(gdFile)){
 }else{load(gdFile)}
 
 # logS version
+Init2logS <- function(init){init$eStep$S <- log(init$eStep$S); return(init)}
 gdLogSFile <- paste0(resDir, algoName, '-gdLogS.Rdata')
 if(!file.exists(gdLogSFile)){
-  initFullLogS <-Init2Log2(initFull); initMiss1LogS <- Init2Log2(initMiss1)
-  initMissRowLogS <-Init2Log2(initMissRow); initAbsRowLogS <-Init2Log2(initAbsRow)
+  initFullLogS <-Init2logS(initFull); initMiss1LogS <- Init2logS(initMiss1)
+  initMissRowLogS <-Init2logS(initMissRow); initAbsRowLogS <-Init2logS(initAbsRow)
   nlLogSFull <- nloptr(x0=c(Mstep2Theta(initFullLogS$mStep, n=n, d=d, p=p, q=q), Estep2Psi(initFullLogS$eStep, n=n, d=d, p=p, q=q)),
                        eval_f=NegElboLogSVecThetaPsi, eval_grad_f=NegElboLogSGradVecThetaPsi, data=dataFull, q=q, tolXi=tolXi, opts=opts)
   gdLogSFull <- optim(par=c(Mstep2Theta(initFullLogS$mStep, n=n, d=d, p=p, q=q), Estep2Psi(initFullLogS$eStep, n=n, d=d, p=p, q=q)),
@@ -110,16 +110,11 @@ if(!file.exists(gdLogSFile)){
 
 print(rbind(
   c(nlFull$objective, nlMiss1$objective, nlMissRow$objective, nlAbsRow$objective), 
+  c(nlLogSFull$objective, nlLogSMiss1$objective, nlLogSMissRow$objective, nlLogSAbsRow$objective), 
   c(gdFull$value, gdMiss1$value, gdMissRow$value, gdAbsRow$value), 
-  c(nlLogSFull$objective, nlLogSMiss1$objective, nlLogSMissRow$objective, nlLogSAbsRow$objective),
-  c(gdLogSFull$value, gdLogSMiss1$value, gdLogSMissRow$value, gdLogSAbsRow$value))
-)
-
-par(mfrow=c(2, 2))
-if(!is.null(gdFull$par)){plot(gdFull$par, gdLogSFull$par); abline(a=0, b=1, h=0, v=0)}
-if(!is.null(gdMiss1$par)){plot(gdMiss1$par, gdLogSMiss1$par); abline(a=0, b=1, h=0, v=0)}
-if(!is.null(gdMissRow$par)){plot(gdMissRow$par, gdLogSMissRow$par); abline(a=0, b=1, h=0, v=0)}
-if(!is.null(gdAbsRow$par)){plot(gdAbsRow$par, gdLogSAbsRow$par); abline(a=0, b=1, h=0, v=0)}
+  c(gdLogSFull$value, gdLogSMiss1$value, gdLogSMissRow$value, gdLogSAbsRow$value)
+  # c(fitFull$elbo, fitMiss1$elbo, fitMissRow$elbo, fitAbsRow$elbo)
+  ))
 
 #################################################################################
 # VEM
@@ -131,42 +126,35 @@ if(!file.exists(fullFile)){
   fitFull <- VemZiPLN(data=dataFull, init=initFull, iterMax=iterMax, tolXi=tolXi, tolS=tolS, plot=TRUE)
   save(fitFull, file=fullFile)
 }else{load(fullFile)}
-print(c(fitFull$elbo))
-plot(fitFull$elboPath, type='b', pch=20, ylim=quantile(fitFull$elboPath, prob=c(0.1, 1)))
-abline(h=c(gdLogSFull$value, gdLogSMiss1$value, gdLogSMissRow$value, gdLogSAbsRow$value), col=1:4)
-
 # One missing data
 miss1File <- paste0(resDir, algoName, '-miss1.Rdata')
 if(!file.exists(miss1File)){
   fitMiss1 <- VemZiPLN(data=dataMiss1, init=initMiss1, iterMax=iterMax, tolXi=tolXi, tolS=tolS, plot=TRUE)
   save(dataMiss1, initMiss1, fitMiss1, file=miss1File)
 }else{load(miss1File)}
-print(c(fitFull$elbo, fitMiss1$elbo))
-plot(fitFull$elboPath, xlim=c(1, max(c(fitFull$iter, fitMiss1$iter))), type='b', pch=20,
-     ylim=quantile(c(fitFull$elboPath, fitMiss1$elboPath), prob=c(0.1, 1)))
-points(fitMiss1$elboPath, type='b', pch=20, col=2)
-abline(h=c(gdLogSFull$value, gdLogSMiss1$value, gdLogSMissRow$value, gdLogSAbsRow$value), col=1:4)
-
 # One missing row
-miss2File <- paste0(resDir, algoName, '-missRow.Rdata')
-if(!file.exists(miss2File)){
+missRowFile <- paste0(resDir, algoName, '-missRow.Rdata')
+if(!file.exists(missRowFile)){
   fitMissRow <- VemZiPLN(data=dataMissRow, init=initMissRow, iterMax=iterMax, tolXi=tolXi, tolS=tolS, plot=TRUE)
-  save(dataMissRow, initMissRow, fitMissRow, file=miss2File)
-}else{load(miss2File)}
-print(c(fitFull$elbo, fitMiss1$elbo, fitMissRow$elbo))
-plot(fitFull$elboPath, xlim=c(1, max(c(fitFull$iter, fitMiss1$iter, fitMissRow$iter))), type='b', pch=20,
-     ylim=quantile(c(fitFull$elboPath, fitMiss1$elboPath, fitMissRow$elboPath), prob=c(0.1, 1)))
-points(fitMiss1$elboPath, type='b', pch=20, col=2)
-points(fitMissRow$elboPath, type='b', pch=20, col=3)
-abline(h=c(gdLogSFull$value, gdLogSMiss1$value, gdLogSMissRow$value, gdLogSAbsRow$value), col=1:4)
-
+  save(dataMissRow, initMissRow, fitMissRow, file=missRowFile)
+}else{load(missRowFile)}
 # One absent row
-miss3File <- paste0(resDir, algoName, '-absRow.Rdata')
-if(!file.exists(miss3File)){
+absRowFile <- paste0(resDir, algoName, '-absRow.Rdata')
+if(!file.exists(absRowFile)){
   fitAbsRow <- VemZiPLN(data=dataAbsRow, init=initAbsRow, iterMax=iterMax, tolXi=tolXi, tolS=tolS, plot=TRUE)
-  save(dataAbsRow, initAbsRow, fitAbsRow, file=miss3File)
-}else{load(miss3File)}
-print(c(fitFull$elbo, fitMiss1$elbo, fitMissRow$elbo, fitAbsRow$elbo))
+  save(dataAbsRow, initAbsRow, fitAbsRow, file=absRowFile)
+}else{load(absRowFile)}
+
+#################################################################################
+# Comparison
+#################################################################################
+par(mfrow=c(2, 2))
+if(!is.null(gdFull$par)){plot(gdFull$par, gdLogSFull$par); abline(a=0, b=1, h=0, v=0)}
+if(!is.null(gdMiss1$par)){plot(gdMiss1$par, gdLogSMiss1$par); abline(a=0, b=1, h=0, v=0)}
+if(!is.null(gdMissRow$par)){plot(gdMissRow$par, gdLogSMissRow$par); abline(a=0, b=1, h=0, v=0)}
+if(!is.null(gdAbsRow$par)){plot(gdAbsRow$par, gdLogSAbsRow$par); abline(a=0, b=1, h=0, v=0)}
+
+par(mfrow=c(1, 1))
 plot(fitFull$elboPath, xlim=c(1, max(c(fitFull$iter, fitMiss1$iter, fitMissRow$iter, fitAbsRow$iter))), type='b', pch=20, 
      ylim=quantile(c(fitFull$elboPath, fitMiss1$elboPath, fitMissRow$elboPath, fitAbsRow$elboPath), prob=c(0.1, 1)))
 points(fitMiss1$elboPath, type='b', pch=20, col=2)
@@ -174,14 +162,13 @@ points(fitMissRow$elboPath, type='b', pch=20, col=3)
 points(fitAbsRow$elboPath, type='b', pch=20, col=4)
 abline(h=c(gdFull$value, gdMiss1$value, gdMissRow$value, gdAbsRow$value), col=1:4)
 abline(h=c(gdLogSFull$value, gdLogSMiss1$value, gdLogSMissRow$value, gdLogSAbsRow$value), col=1:4, lty=2)
+abline(h=c(nlFull$value, nlMiss1$value, nlMissRow$value, nlAbsRow$value), col=1:4, lty=3)
+abline(h=c(nlLogSFull$value, nlLogSMiss1$value, nlLogSMissRow$value, nlLogSAbsRow$value), col=1:4, lty=4)
 
-print(rbind(c(gdFull$value, gdMiss1$value, gdMissRow$value, gdAbsRow$value), 
-      c(gdLogSFull$value, gdLogSMiss1$value, gdLogSMissRow$value, gdLogSAbsRow$value), 
-      c(fitFull$elbo, fitMiss1$elbo, fitMissRow$elbo, fitAbsRow$elbo)))
-
-# ELBO(data=data2, mStep=init2$mStep, eStep=init2$eStep)
-# init23 <- init2
-# init23$eStep$M <- init2$eStep$M[-iMiss, ]
-# init23$eStep$S <- init2$eStep$S[-iMiss, ]
-# ELBO(data=data3, mStep=init3$mStep, eStep=init3$eStep)
-# ELBO(data=data3, mStep=init23$mStep, eStep=init23$eStep)
+print(rbind(
+  c(nlFull$objective, nlMiss1$objective, nlMissRow$objective, nlAbsRow$objective), 
+  c(nlLogSFull$objective, nlLogSMiss1$objective, nlLogSMissRow$objective, nlLogSAbsRow$objective), 
+  c(gdFull$value, gdMiss1$value, gdMissRow$value, gdAbsRow$value), 
+  c(gdLogSFull$value, gdLogSMiss1$value, gdLogSMissRow$value, gdLogSAbsRow$value), 
+  c(fitFull$elbo, fitMiss1$elbo, fitMissRow$elbo, fitAbsRow$elbo)
+  ))
