@@ -19,7 +19,7 @@ NuMuA <- function(data, mStep, eStep){
 
 ################################################################################
 # Init
-InitZiPLN <- function(data, q, tolXi=1e-4,initS = 1e-4){
+InitZiPLN <- function(data, q, tolXi=1e-4, initS=1){
   obs <- which(data$Omega==1)
   reg <- lm(as.vector(log(1+data$Y))[obs] ~ -1 + data$X[obs, ])
   res <- matrix(0, nrow(data$Y), ncol(data$Y))
@@ -32,7 +32,6 @@ InitZiPLN <- function(data, q, tolXi=1e-4,initS = 1e-4){
   mStep <- list(gamma=zip$gamma, beta=zip$beta, C=C)
   # eStep <- list(xi=matrix(sum(data$Omega*(data$Y > 0))/sum(data$Omega), n, p), 
                 # M=matrix(0, n, q), S=matrix(1e-4, n, q))
-  
   eStep <- list(M=matrix(0, nrow(data$Y), q), S=matrix(initS, nrow(data$Y), q))
   eStep$xi <- ComputeXi(data=data, mStep=mStep, eStep=eStep, tolXi)
   return(list(mStep=mStep, eStep=eStep, reg=reg, pca=pca, zip=zip))
@@ -69,13 +68,15 @@ ELBOi <- function(datai, mStep, eStepi){
   S2i <- - 0.5*(sum(eStepi$mi^2) + sum(eStepi$Si))
   S3i <- sum(datai$Omegai * eStepi$xii * (-Ai + datai$Yi*(mui + mStep$C%*%eStepi$mi) - datai$logFactYi))
   xii <- eStepi$xii[which(eStepi$xii*(1-eStepi$xii) > 0)]
-  S4i <- sum(xii * log(xii/(1 - xii)) + log(1 - xii)) 
+  S4i <- - sum(xii * log(xii/(1 - xii)) + log(1 - xii)) 
   S5i <- 0.5*(length(eStepi$mi) + sum(log(eStepi$Si)))
   elboi = S1i + S2i + S3i + S4i+ S5i
-  return(c(S1i,S2i,S3i,S4i,S5i,elboi))
+  # return(c(S1i,S2i,S3i,S4i,S5i,elboi))
+  return(elboi)
 }
 ELBO <- function(data, mStep, eStep){
-  rowSums(sapply(1:nrow(data$Y), function(i){
+  # rowSums(sapply(1:nrow(data$Y), function(i){
+  sum(sapply(1:nrow(data$Y), function(i){
     datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], 
                   Omegai=data$Omega[i, ], logFactYi=data$logFactY[i, ])
     eStepi <- list(xii=eStep$xi[i, ], mi=as.vector(eStep$M[i, , drop=FALSE]), Si=as.vector(eStep$S[i, , drop=FALSE]))
@@ -256,7 +257,7 @@ JackknifeZiPLN <- function(data, fit, iterMax=1e3){
 ################################################################################
 # VEM
 VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4, plot=TRUE){
-  # init <- InitZiPLN(data); tol=1e-4; iterMax=1e3; tolXi=1e-5; tolS=1e-5
+  # init <- InitZiPLN(data, q=2); q=2; tol=1e-4; iterMax=1e3; tolXi=1e-5; tolS=1e-5; plot=TRUE
   mStep <- init$mStep; eStep <- init$eStep
   elboPath <- rep(NA, iterMax)
   diff <- 2*tol; iter <- 1
