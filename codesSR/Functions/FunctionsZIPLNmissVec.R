@@ -74,6 +74,30 @@ ElboGradVecThetaPsi <- function(thetaPsi, data, q, tolXi=1e-4){
 }
 
 ################################################################################
+# ELBO + Grad : log(S) versions
+ElboLogSVecThetaPsi <- function(thetaPsiLogS, data, q, tolXi=1e-4){
+  n <- nrow(data$Y); d <- ncol(data$X); p <- ncol(data$Y)
+  theta <- thetaPsiLogS[1:((2*d)+(p*q))]
+  mStep <- Theta2Mstep(theta, n=n, d=d, p=p, q=q)
+  psiLogS <- thetaPsiLogS[(2*d)+(p*q) + (1:(2*(n*q)))]
+  eStep <- Psi2Estep(psiLogS, n=n, d=d, p=p, q=q)
+  eStep$S <- exp(eStep$S)
+  eStep$xi <- ComputeXi(data=data, mStep=mStep, eStep=eStep, tolXi=tolXi)
+  ELBO(data=data, mStep=mStep, eStep=eStep)
+}
+ElboLogSGradVecThetaPsi <- function(thetaPsiLogS, data, q, tolXi=1e-4){
+  theta <- thetaPsiLogS[1:((2*d)+(p*q))]
+  mStep <- Theta2Mstep(theta, n=n, d=d, p=p, q=q)
+  psi <- psiLogS <- thetaPsiLogS[(2*d)+(p*q) + (1:(2*(n*q)))]
+  psi[(n*q)+(1:(n*q))] <- exp(psi[(n*q)+(1:(n*q))])
+  eStep <- Psi2Estep(psi, n=n, d=d, p=p, q=q)
+  eStep$xi <- ComputeXi(data=data, mStep=mStep, eStep=eStep, tolXi=tolXi)
+  gradTheta <- ElboGradVecTheta(theta, data, eStep)
+  gradPsi <- ElboGradVecPsi(psi, data, mStep) * c(rep(1, n*q), psi[(n*q)+(1:(n*q))])
+  return(c(gradTheta, gradPsi))
+}
+
+################################################################################
 # VEM
 VemZiPLNvec <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4, plot=TRUE){
   n <- nrow(data$Y); d <- ncol(data$X); q <- ncol(init$eStep$M); p <- ncol(data$Y)
