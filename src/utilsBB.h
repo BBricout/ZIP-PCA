@@ -121,7 +121,8 @@ double entropie_logis(arma::mat & xi){
     		if (xi(i,j) == 0. || xi(i,j) == 1.){
     		H = H ;
     		} else {
-    		H = H + xi(i,j) * log(xi(i,j)/(1. - xi(i,j))) + log(1. - xi(i,j));
+    		H = H - (xi(i,j) * log(xi(i,j)) + (1 - xi(i,j))*log(1 - xi(i,j))) ; 
+    		//H = H + xi(i,j) * log(xi(i,j)/(1. - xi(i,j))) + log(1. - xi(i,j));
     		}
     	}
     }

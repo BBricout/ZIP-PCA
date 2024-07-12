@@ -32,7 +32,7 @@ Init_ZIP <- function(Y, X, q){
   
   C <- svdM$v[, 1:q, drop = FALSE] %*% diag(svdM$d[1:q], nrow = q, ncol = q)/sqrt(n)
   M  <- svdM$u[, 1:q, drop = FALSE] %*% diag(svdM$d[1:q], nrow = q, ncol = q) %*% t(svdM$v[1:q, 1:q, drop = FALSE])
-  S <- matrix(0.1, n, q)
+  S <- matrix(1, n, q)
   
   return(list(B = B, D = D, C = C, M = M, S = S))
 }

@@ -128,7 +128,7 @@ Rcpp::List nlopt_optimize_ZIP_logS(
     objective = -objective;
 
         objective_values.push_back(- objective);
-        std::cout << objective << std::endl;
+        std::cout << elbo4 << std::endl;
 
         metadata.map<B_ID>(grad) = - gradB;
         metadata.map<D_ID>(grad) = - gradD;
