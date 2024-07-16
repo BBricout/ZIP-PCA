@@ -96,6 +96,7 @@ NegElboLogSVecThetaPsi <- function(thetaPsiLogS, data, q, tolXi=1e-4){
 }
 
 ElboLogSGradVecThetaPsi <- function(thetaPsiLogS, data, q, tolXi=1e-4){
+  n <- nrow(data$Y); d <- ncol(data$X); p <- ncol(data$Y)
   theta <- thetaPsiLogS[1:((2*d)+(p*q))]
   mStep <- Theta2Mstep(theta, n=n, d=d, p=p, q=q)
   psi <- psiLogS <- thetaPsiLogS[(2*d)+(p*q) + (1:(2*(n*q)))]
