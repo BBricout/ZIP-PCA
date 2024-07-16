@@ -56,18 +56,13 @@ ELBOi <- function(datai, mStep, eStepi){
   }else{
     Ai <- exp(mui + as.vector(eStepi$mi%*%t(mStep$C)) + 0.5*diag(mStep$C%*%diag(eStepi$Si)%*%t(mStep$C)))
   }
-  # elboi <- sum(nui*eStepi$xii - log(1 + exp(nui)))
-  # elboi <- elboi - 0.5*(sum(eStepi$mi^2) + sum(eStepi$Si))
-  # elboi <- elboi + sum(datai$Omegai*eStepi$xii * 
-  #                        (-Ai + datai$Yi*(mui + mStep$C%*%eStepi$mi) - datai$logFactYi))
-  # Excludes xii=0 or 1, before computing the entropy
-  xii <- eStepi$xii[which(eStepi$xii*(1-eStepi$xii) > 0)]
-  # elboi <- elboi + sum(xii * log(xii/(1 - xii)) + log(1 - xii))
-  # elboi <- elboi + 0.5*(length(eStepi$mi) + sum(log(eStepi$Si)))
   S1i <- sum(nui*eStepi$xii - log(1 + exp(nui)))
+  # S1i <- sum((nui*eStepi$xii - log(1 + exp(nui))) * datai$Omegai)
   S2i <- - 0.5*(sum(eStepi$mi^2) + sum(eStepi$Si))
   S3i <- sum(datai$Omegai * eStepi$xii * (-Ai + datai$Yi*(mui + mStep$C%*%eStepi$mi) - datai$logFactYi))
+  # Excludes xii=0 or 1, before computing the entropy
   xii <- eStepi$xii[which(eStepi$xii*(1-eStepi$xii) > 0)]
+  # xii <- eStepi$xii[which(datai$Omegai*eStepi$xii*(1-eStepi$xii) > 0)]
   S4i <- - sum(xii * log(xii/(1 - xii)) + log(1 - xii)) 
   S5i <- 0.5*(length(eStepi$mi) + sum(log(eStepi$Si)))
   elboi = S1i + S2i + S3i + S4i+ S5i
@@ -189,6 +184,7 @@ ElboGradGamma <- function(gamma, data, mStep, eStep){
   nu <- matrix(data$X%*%gamma, nrow(data$Y), ncol(data$Y))
   probU <- plogis(nu)
   as.vector(t(data$X)%*%as.vector(eStep$xi - probU))
+  # as.vector(t(data$X)%*%(as.vector(eStep$xi - probU)*as.vector(data$Omega)))
 }
 ElboBeta <- function(beta, data, mStep, eStep){
   mStep$beta <- beta

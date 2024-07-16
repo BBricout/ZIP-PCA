@@ -11,7 +11,7 @@ simDir <- '../../simulSR/'
 resDir <- './'
 
 # Data
-n <- 100; d <- 5; p <- 10; q <- 2; seed <- 2; obs <- 0.50
+n <- 100; d <- 5; p <- 10; q <- 2; seed <- 1; obs <- 0.80
 simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
 simParms <- paste0(simParmsFull, '-obs', 100*obs)
 simName <- paste0('ZiPLNsim', simParms)
@@ -172,3 +172,4 @@ print(rbind(
   c(gdLogSFull$value, gdLogSMiss1$value, gdLogSMissRow$value, gdLogSAbsRow$value), 
   c(fitFull$elbo, fitMiss1$elbo, fitMissRow$elbo, fitAbsRow$elbo)
   ))
+
