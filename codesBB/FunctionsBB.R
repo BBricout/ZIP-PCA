@@ -104,8 +104,6 @@ Miss.ZIPPCA.logS <- function(Y, # Table de comptages n*p qui peut contenir des d
   if (is.null(config)){config <- PLNPCA_param()$config_optim}
   if (is.null(tolXi)){tolXi <- 1e-4}
   
-  logS <- log(params$S)
-  
   R <- ifelse(is.na(Y), 0, 1) # Masque qui met des 0 à la place des données manquantes
   
   Y.na <- ifelse(R == 0, 0, Y)
@@ -114,7 +112,7 @@ Miss.ZIPPCA.logS <- function(Y, # Table de comptages n*p qui peut contenir des d
                R = R,
                X = X)
   
-  params$logS <- logS
+  params$logS <- log(params$S)
   
   out <- nlopt_optimize_ZIP_logS(data, params, config, tolXi)
   

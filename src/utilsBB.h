@@ -128,3 +128,5 @@ double entropie_logis(arma::mat & xi){
     }
      return H ;
 }
+
+

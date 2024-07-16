@@ -1,3 +1,7 @@
+# seed <- .Random.seed
+source('codesSR/Functions/FunctionsUtils.R')
+source('codesSR/Functions/FunctionsZIPLNmiss.R')
+
 Parms2Steps <- function(parms, data){
   n <- nrow(data$Y); p <- ncol(data$Y); d <- ncol(data$X)
   mStep <- list(gamma=parms[1:d], beta=parms[d+(1:d)], 
@@ -8,6 +12,7 @@ Parms2Steps <- function(parms, data){
   return(list(m=mStep, e=eStep))  
 }
 
+
 Parms2Params <- function(parms, data){
   n <- nrow(data$Y); p <- ncol(data$Y); d <- ncol(data$X)
   steps <- Parms2Steps(parms=parms, data=data)
@@ -17,6 +22,12 @@ Parms2Params <- function(parms, data){
               M=as.matrix(steps$e$M), 
               S=as.matrix(steps$e$S)))
 }
+
+
+
+
+
+
 
 
 

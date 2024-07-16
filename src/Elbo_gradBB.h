@@ -26,6 +26,7 @@ Elbo_grad(const arma::mat & Y, const arma::mat & X, const arma::mat & R,
               const arma::mat & B, const arma::mat & D, const arma::mat & C, 
               const arma::mat & M, const arma::mat & S,
               double tolXi) {
+              
 
     int n = Y.n_rows;
     int p = Y.n_cols;
@@ -104,4 +105,9 @@ Elbo_grad_LogS(const arma::mat & Y, const arma::mat & X, const arma::mat & R,
         gradB, gradD, gradC, gradM, gradS, A
     );
 }
+
+
+
+
+
 
