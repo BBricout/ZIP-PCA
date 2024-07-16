@@ -43,45 +43,49 @@ data.na$R <- data.na$Omega <- ifelse(is.na(Y.na), 0, 1)
 # Initialisation des paramètres
 
 init <- Init_ZIP(Y, X, q)
-# init.na <- Init_ZIP(data.na$Y.na, X, q)
+init$M <- matrix(0, n, q)
+init.na <- Init_ZIP(data.na$Y.na, X, q)
+init.na$M <- matrix(0, n, q)
 
 mStep <- list(gamma = init$D, beta = init$B, C = init$C)
 eStep <- list(M = init$M, S = init$S)
 
+eStep$xi <- Elbo_grad_Rcpp(data.na, init, tolXi)$xi
 
-# # params <- list(B=as.matrix(mStep$beta), 
-# #                D=as.matrix(mStep$gamma), 
-# #                C=as.matrix(mStep$C), 
-# #                M=as.matrix(eStep$M), 
-# #                S=as.matrix(eStep$S))
-# 
-# parmsInit <- c(mStep$gamma, mStep$beta, as.vector(mStep$C), 
-#                as.vector(t(eStep$M)), as.vector(t(eStep$S)))
-# parmsLogSInit <- c(mStep$gamma, mStep$beta, as.vector(mStep$C), 
-#                    as.vector(t(eStep$M)), log(as.vector(t(eStep$S))))
-# 
-# parmsInit.na <- c(init.na$D, init.na$B, init$C,
-#                   as.vector(t(init.na$M)), as.vector(t(init.na$S)))
-# parmsLogSInit.na <- c(init.na$D, init.na$B, as.vector(init.na$C), 
-#                    as.vector(t(init.na$M)), log(as.vector(t(init.na$S))))
+
+# params <- list(B=as.matrix(mStep$beta),
+#                D=as.matrix(mStep$gamma),
+#                C=as.matrix(mStep$C),
+#                M=as.matrix(eStep$M),
+#                S=as.matrix(eStep$S))
+
+parmsInit <- c(mStep$gamma, mStep$beta, as.vector(mStep$C),
+               as.vector(t(eStep$M)), as.vector(t(eStep$S)))
+parmsLogSInit <- c(mStep$gamma, mStep$beta, as.vector(mStep$C),
+                   as.vector(t(eStep$M)), log(as.vector(t(eStep$S))))
+
+parmsInit.na <- c(init.na$D, init.na$B, init$C,
+                  as.vector(t(init.na$M)), as.vector(t(init.na$S)))
+parmsLogSInit.na <- c(init.na$D, init.na$B, as.vector(init.na$C),
+                   as.vector(t(init.na$M)), log(as.vector(t(init.na$S))))
 
 #-------------------------------------------------------------------------------
 # Avec ou sans une données
 
-ElboB <- Elbo(data, init, tolXi)
-ElboB.na <- Elbo(data.na, init, tolXi)
-ElboS.na <- ELBO(data.na, mStep = mStep, eStep = eStep)
-print(c(ElboB, ElboB.na))
-GradB <- Grad(data, init, tolXi)
-GradB.na <- Grad(data.na, init, tolXi)
-
-# par(mfrow = c(2, 3))
-
-plot(GradB$gradB, GradB.na$gradB) ; abline(0,1)
-plot(GradB$gradD, GradB.na$gradD) ; abline(0,1)
-plot(GradB$gradC, GradB.na$gradC) ; abline(0,1)
-plot(GradB$gradM, GradB.na$gradM) ; abline(0,1)
-plot(GradB$gradS, GradB.na$gradS) ; abline(0,1)
+# ElboB <- Elbo(data, init, tolXi)
+# ElboB.na <- Elbo_grad_Rcpp(data.na, init, tolXi)$objective
+# ElboS.na <- ELBO(data.na, mStep = mStep, eStep = eStep)
+# print(c(ElboB, ElboB.na))
+# GradB <- Grad(data, init, tolXi)
+# GradB.na <- Grad(data.na, init, tolXi)
+# 
+# # par(mfrow = c(2, 3))
+# 
+# plot(GradB$gradB, GradB.na$gradB) ; abline(0,1)
+# plot(GradB$gradD, GradB.na$gradD) ; abline(0,1)
+# plot(GradB$gradC, GradB.na$gradC) ; abline(0,1)
+# plot(GradB$gradM, GradB.na$gradM) ; abline(0,1)
+# plot(GradB$gradS, GradB.na$gradS) ; abline(0,1)
 #-------------------------------------------------------------------------------
 # Fonction optimisation
 
@@ -121,74 +125,74 @@ BgradLogS.neg <- function(parmsLogS, data, tolXi){
 }
 
 
-# #-------------------------------------------------------------------------------
-# # Tests avec mon algorithme
-# 
-# # Données complètes
-# Bfit <- Miss.ZIPPCA(Y, X, q, params = init, config = config)
-# 
-# # Données incomplètes
-# Bfit.na <- Miss.ZIPPCA(Y.na, X, q, params = init.na, config = config)
-# 
-# # Données complètes avec logS
-# BfitLogS <- Miss.ZIPPCA.logS(Y, X, params = init)
-# 
-# # Données incomplètes avec logS
-# BfitLogS.na <- Miss.ZIPPCA(Y.na, X, params = init.na)
-# 
-# 
-# #-------------------------------------------------------------------------------
-# # Tests optimisation
-# 
-# # Données complètes
-# Optfit <- optim(par=parmsInit, fn=Bobj, gr=Bgrad, data=data, 
-#               method='L-BFGS-B', control=list(fnscale=-1), lower=lBound, tolXi = tolXi)
-# 
-# 
-# # Données incomplètes
-# 
-# Optfit.na <- optim(par=parmsInit.na, fn=Bobj, gr=Bgrad, data=data.na, 
-#                    method='L-BFGS-B', control=list(fnscale=-1), lower=lBound, tolXi = tolXi)
-# 
-# # Données complètes avec logS
-# 
-# OptfitLogS <- optim(par=parmsLogSInit, fn=BobjLogS, gr=BgradLogS, data=data, 
-#                   method='BFGS', control=list(fnscale=-1), tolXi = tolXi)
-# 
-# # Données incomplètes avec logS
-# 
-# OptfitLogS.na <- optim(par=parmsLogSInit.na, fn=BobjLogS, gr=BgradLogS, data=data.na, 
-#                   method='BFGS', control=list(fnscale=-1), tolXi = tolXi)
-# 
-# #-------------------------------------------------------------------------------
-# # Nlopt
-# 
-# opts <- list("algorithm"="NLOPT_LD_CCSAQ",
-#              "xtol_rel"=1.0e-6)
-# 
-# NLfit <- nloptr(x0 = parmsInit, data = data, eval_f = Bobj.neg, eval_grad_f = Bgrad.neg, 
-#                 lb = lBound, tolXi = tolXi, opts = opts)
-# 
-# NLfit.na <- nloptr(x0 = parmsInit.na, data = data.na, eval_f = Bobj.neg, eval_grad_f = Bgrad.neg, 
-#                 lb = lBound, tolXi = tolXi, opts = opts)
-# 
-# NLfitLogS <- nloptr(x0 = parmsLogSInit, data = data, eval_f = BobjLogS.neg, eval_grad_f = BgradLogS.neg, 
-#                    tolXi = tolXi, opts = opts)
-# 
-# NLfitLogS.na <- nloptr(x0 = parmsLogSInit.na, data = data.na, eval_f = BobjLogS.neg, eval_grad_f = BgradLogS.neg, 
-#                     tolXi = tolXi, opts = opts)
-# 
-# 
-# #-------------------------------------------------------------------------------
-# # ELBO
-# 
-# # Données complètes
-# print(c(Bfit$elbo, BfitLogS$elbo, NLfit$objective, NLfitLogS$objective,
-#         Optfit$value, OptfitLogS$value))
-# 
-# # Données incomplètes
-# print(c(Bfit.na$elbo, BfitLogS.na$elbo, NLfit.na$objective, NLfitLogS.na$objective,
-#         Optfit.na$value, OptfitLogS.na$value))
+#-------------------------------------------------------------------------------
+# Tests avec mon algorithme
+
+# Données complètes
+Bfit <- Miss.ZIPPCA(Y, X, q, params = init, config = config)
+
+# Données incomplètes
+Bfit.na <- Miss.ZIPPCA(Y.na, X, q, params = init.na, config = config)
+
+# Données complètes avec logS
+BfitLogS <- Miss.ZIPPCA.logS(Y, X, params = init)
+
+# Données incomplètes avec logS
+BfitLogS.na <- Miss.ZIPPCA(Y.na, X, params = init.na)
+
+
+#-------------------------------------------------------------------------------
+# Tests optimisation
+
+# Données complètes
+Optfit <- optim(par=parmsInit, fn=Bobj, gr=Bgrad, data=data,
+              method='L-BFGS-B', control=list(fnscale=-1), lower=lBound, tolXi = tolXi)
+
+
+# Données incomplètes
+
+Optfit.na <- optim(par=parmsInit.na, fn=Bobj, gr=Bgrad, data=data.na,
+                   method='L-BFGS-B', control=list(fnscale=-1), lower=lBound, tolXi = tolXi)
+
+# Données complètes avec logS
+
+OptfitLogS <- optim(par=parmsLogSInit, fn=BobjLogS, gr=BgradLogS, data=data,
+                  method='BFGS', control=list(fnscale=-1), tolXi = tolXi)
+
+# Données incomplètes avec logS
+
+OptfitLogS.na <- optim(par=parmsLogSInit.na, fn=BobjLogS, gr=BgradLogS, data=data.na,
+                  method='BFGS', control=list(fnscale=-1), tolXi = tolXi)
+
+#-------------------------------------------------------------------------------
+# Nlopt
+
+opts <- list("algorithm"="NLOPT_LD_CCSAQ",
+             "xtol_rel"=1.0e-6)
+
+NLfit <- nloptr(x0 = parmsInit, data = data, eval_f = Bobj.neg, eval_grad_f = Bgrad.neg,
+                lb = lBound, tolXi = tolXi, opts = opts)
+
+NLfit.na <- nloptr(x0 = parmsInit.na, data = data.na, eval_f = Bobj.neg, eval_grad_f = Bgrad.neg,
+                lb = lBound, tolXi = tolXi, opts = opts)
+
+NLfitLogS <- nloptr(x0 = parmsLogSInit, data = data, eval_f = BobjLogS.neg, eval_grad_f = BgradLogS.neg,
+                   tolXi = tolXi, opts = opts)
+
+NLfitLogS.na <- nloptr(x0 = parmsLogSInit.na, data = data.na, eval_f = BobjLogS.neg, eval_grad_f = BgradLogS.neg,
+                    tolXi = tolXi, opts = opts)
+
+
+#-------------------------------------------------------------------------------
+# ELBO
+
+# Données complètes
+print(c(Bfit$elbo, BfitLogS$elbo, NLfit$objective, NLfitLogS$objective,
+        Optfit$value, OptfitLogS$value))
+
+# Données incomplètes
+print(c(Bfit.na$elbo, BfitLogS.na$elbo, NLfit.na$objective, NLfitLogS.na$objective,
+        Optfit.na$value, OptfitLogS.na$value))
 
 
 
