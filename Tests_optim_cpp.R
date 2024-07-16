@@ -10,6 +10,9 @@ library(nloptr)
 #-------------------------------------------------------------------------------
 # Codes
 
+source("codesSR/Functions/FunctionsZIPLNmiss.R")
+source("codesSR/Functions/FunctionsZIPLNmissVec.R")
+
 source("codesBB/FunctionsBB.R")
 source("codesBB/UtilsBB.R")
 
@@ -26,13 +29,15 @@ p <- ncol(Y)
 q <- ncol(true$eStep$M)
 d <- ncol(X)
 
-tolXi <- 1e-04 ; tolS <- 1e-04
+tolXi <- 0 ; tolS <- 1e-04
 lBound <- c(rep(-Inf, (2*d)+(p*q)+(n*q)), rep(tolS, n*q))
 config <- PLNPCA_param()$config_optim
 config$lower_bounds <- lBound
 
 Y.na <- Y
 Y.na[1,3] <- NA
+# Y.na <- prodNA(Y, 0.1)
+# Y.na <- matrix(NA, n, p)
 data.na <- data
 data.na$Y.na <- Y.na
 data.na$R <- data.na$Omega <- ifelse(is.na(Y.na), 0, 1)
@@ -51,31 +56,39 @@ mStep <- list(gamma = init$D, beta = init$B, C = init$C)
 eStep <- list(M = init$M, S = init$S)
 
 eStep$xi <- Elbo_grad_Rcpp(data.na, init, tolXi)$xi
+#eStep$xi <- ComputeXi(data, mStep, eStep, tolXi)
 
-
-# params <- list(B=as.matrix(mStep$beta),
-#                D=as.matrix(mStep$gamma),
-#                C=as.matrix(mStep$C),
-#                M=as.matrix(eStep$M),
-#                S=as.matrix(eStep$S))
-
-parmsInit <- c(mStep$gamma, mStep$beta, as.vector(mStep$C),
-               as.vector(t(eStep$M)), as.vector(t(eStep$S)))
-parmsLogSInit <- c(mStep$gamma, mStep$beta, as.vector(mStep$C),
-                   as.vector(t(eStep$M)), log(as.vector(t(eStep$S))))
-
-parmsInit.na <- c(init.na$D, init.na$B, init$C,
-                  as.vector(t(init.na$M)), as.vector(t(init.na$S)))
-parmsLogSInit.na <- c(init.na$D, init.na$B, as.vector(init.na$C),
-                   as.vector(t(init.na$M)), log(as.vector(t(init.na$S))))
+# # params <- list(B=as.matrix(mStep$beta),
+# #                D=as.matrix(mStep$gamma),
+# #                C=as.matrix(mStep$C),
+# #                M=as.matrix(eStep$M),
+# #                S=as.matrix(eStep$S))
+# 
+# parmsInit <- c(mStep$gamma, mStep$beta, as.vector(mStep$C),
+#                as.vector(t(eStep$M)), as.vector(t(eStep$S)))
+# parmsLogSInit <- c(mStep$gamma, mStep$beta, as.vector(mStep$C),
+#                    as.vector(t(eStep$M)), log(as.vector(t(eStep$S))))
+# 
+# parmsInit.na <- c(init.na$D, init.na$B, init$C,
+#                   as.vector(t(init.na$M)), as.vector(t(init.na$S)))
+# parmsLogSInit.na <- c(init.na$D, init.na$B, as.vector(init.na$C),
+#                    as.vector(t(init.na$M)), log(as.vector(t(init.na$S))))
 
 #-------------------------------------------------------------------------------
 # Avec ou sans une données
 
-# ElboB <- Elbo(data, init, tolXi)
-# ElboB.na <- Elbo_grad_Rcpp(data.na, init, tolXi)$objective
-# ElboS.na <- ELBO(data.na, mStep = mStep, eStep = eStep)
-# print(c(ElboB, ElboB.na))
+Sxi <- ComputeXi(data, mStep, eStep, tolXi)
+Bxi <- Elbo_grad_Rcpp(data, init, tolXi)$xi
+max(abs(Sxi - Bxi))
+
+plot(Sxi, Bxi) ; abline(0,1)
+
+ElboB <- Elbo(data, init, tolXi)
+ElboS <- ELBOSophie(data, mStep, eStep)
+print(c(ElboB$objective, ElboS))
+ElboB.na <- Elbo_grad_Rcpp(data.na, init, tolXi)$objective
+ElboS.na <- ELBO(data.na, mStep = mStep, eStep = eStep)
+print(c(ElboB, ElboB.na))
 # GradB <- Grad(data, init, tolXi)
 # GradB.na <- Grad(data.na, init, tolXi)
 # 
@@ -89,15 +102,31 @@ parmsLogSInit.na <- c(init.na$D, init.na$B, as.vector(init.na$C),
 #-------------------------------------------------------------------------------
 # Fonction optimisation
 
+# Stephane
+Sobj <- function(parms, data, tolXi){
+  steps <- Parms2Steps(parms=parms, data=data, tolXi)
+  ELBO(data=data, mStep=steps$m, eStep=steps$e)
+}
+Sgrad <- function(parms, data, tolXi){
+  steps <- Parms2Steps(parms=parms, data=data, tolXi)
+  c(ElboGradGamma(gamma=steps$m$gamma, data=data, mStep=steps$m, eStep=steps$e),
+    ElboGradBeta(beta=steps$m$beta, data=data, mStep=steps$m, eStep=steps$e), 
+    ElboGradC(vecC=as.vector(steps$m$C), data=data, mStep=steps$m, eStep=steps$e), 
+    ElboGradVecM(Mvec=as.vector(t(steps$e$M)), data=data, mStep=steps$m, eStep=steps$e), 
+    ElboGradVecS(Svec=as.vector(t(steps$e$S)), data=data, mStep=steps$m, eStep=steps$e))
+}
+
+# Barbara
+
 Bobj <- function(parms, data, tolXi){
-  params <- Parms2Params(parms=parms, data=data)
+  params <- Parms2Params(parms=parms, data=data, tolXi)
   Elbo(data=data, params=params, tolXi)$objective
 }
 Bobj.neg <- function(parms, data, tolXi){
   -Bobj(parms, data, tolXi)
 }
 Bgrad <- function(parms, data, tolXi){
-  params <- Parms2Params(parms=parms, data=data)
+  params <- Parms2Params(parms=parms, data=data, tolXi)
   grads <- Grad(data=data, params=params, tolXi)
   c(as.vector(grads$gradD), as.vector(grads$gradB), as.vector(grads$gradC), 
     as.vector(t(grads$gradM)), as.vector(t(grads$gradS)))
@@ -106,7 +135,7 @@ Bgrad.neg <- function(parms, data, tolXi){
   -Bgrad(parms, data, tolXi)
 }
 BobjLogS <- function(parmsLogS, data, tolXi){
-  params <- Parms2Params(parms=parmsLogS, data=data)
+  params <- Parms2Params(parms=parmsLogS, data=data,  tolXi)
   params$logS <- params$S
   Elbo_grad_logS_Rcpp(data, params, tolXi)$objective
 }
@@ -114,7 +143,7 @@ BobjLogS.neg <- function(parmsLogS, data, tolXi){
   -BobjLogS(parmsLogS, data, tolXi)
 }
 BgradLogS <- function(parmsLogS, data, tolXi){
-  params <- Parms2Params(parms=parmsLogS, data=data)
+  params <- Parms2Params(parms=parmsLogS, data=data, tolXi)
   params$logS <- params$S
   elbo <- Elbo_grad_logS_Rcpp(data, params, tolXi)
   c(as.vector(elbo$gradD), as.vector(elbo$gradB), as.vector(elbo$gradC),
@@ -141,6 +170,7 @@ BfitLogS <- Miss.ZIPPCA.logS(Y, X, params = init)
 BfitLogS.na <- Miss.ZIPPCA(Y.na, X, params = init.na)
 
 
+
 #-------------------------------------------------------------------------------
 # Tests optimisation
 
@@ -163,6 +193,16 @@ OptfitLogS <- optim(par=parmsLogSInit, fn=BobjLogS, gr=BgradLogS, data=data,
 
 OptfitLogS.na <- optim(par=parmsLogSInit.na, fn=BobjLogS, gr=BgradLogS, data=data.na,
                   method='BFGS', control=list(fnscale=-1), tolXi = tolXi)
+
+# Stephane données complètes
+SOptfit <- optim(par=parmsInit, fn=Sobj, gr=Sgrad, data=data,
+                method='L-BFGS-B', control=list(fnscale=-1), lower=lBound, tolXi = tolXi)
+
+SOptfit.na <- optim(par=parmsInit.na, fn=Sobj, gr=Sgrad, data=data.na,
+                   method='L-BFGS-B', control=list(fnscale=-1), lower=lBound, tolXi = tolXi)
+
+print(matrix(c(Optfit$value, Optfit.na$value, SOptfit$value, SOptfit.na$value), 2, 2, byrow = TRUE))
+
 
 #-------------------------------------------------------------------------------
 # Nlopt

@@ -184,7 +184,6 @@ Rcpp::List nlopt_optimize_ZIP(
     
     std::vector<double> objective_values;
     
-    std::cout << "ok" << std::endl;
         
     
 
