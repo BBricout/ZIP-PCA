@@ -24,7 +24,7 @@ X0 <- NULL
 # X0 <- matrix(rnorm(n*p*d), n*p, d); X0[, 1] <- 1; baseSimName <- paste0(baseSimName, '-sameX', seedX)
 
 # Simul
-for(seed in 1:10){
+for(seed in 1:100){
   set.seed(seed)
   simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
   simNameFull <- paste0(baseSimName, simParmsFull)
