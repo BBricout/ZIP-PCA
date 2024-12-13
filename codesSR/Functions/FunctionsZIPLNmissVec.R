@@ -113,7 +113,8 @@ NegElboLogSGradVecThetaPsi <- function(thetaPsiLogS, data, q, tolXi=1e-4){
 
 ################################################################################
 # VEM
-VemZiPLNvec <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4, plot=TRUE){
+VemZiPLNvec <- function(data, init, tol=1e-4, iterMax=1e3, iterMaxOptim=1e1, tolXi=1e-4, tolS=1e-4, plot=TRUE){
+  # tol=1e-4; iterMax=1e3; tolXi=1e-4; tolS=1e-4; plot=TRUE
   n <- nrow(data$Y); d <- ncol(data$X); q <- ncol(init$eStep$M); p <- ncol(data$Y)
   mStep <- init$mStep; theta <- Mstep2Theta(mStep, n=n, d=d, p=p, q=q)
   eStep <- init$eStep; psi <- Estep2Psi(eStep, n=n, d=d, p=p, q=q)
@@ -129,21 +130,21 @@ VemZiPLNvec <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4
     # thetaNew <- fit$par[1:((2*d)+(p*q))]; psiNew <- fit$par[-(1:((2*d)+(p*q)))]
     # VE
     fitVE <- optim(par=psi, fn=ElboVecPsi, gr=ElboGradVecPsi, data=data, mStep=mStep,
-                   method='L-BFGS-B', control=list(fnscale=-1, maxit=iterMax),
+                   method='L-BFGS-B', control=list(fnscale=-1, maxit=iterMaxOptim),
                    lower=c(rep(-Inf, (n*q)), rep(tolS, (n*q))))
     psiNew <- fitVE$par; eStepNew <- Psi2Estep(psiNew, n=n, d=d, p=p, q=q)
     eStepNew$xi <- ComputeXi(data=data, mStep=mStep, eStep=eStepNew, tolXi=tolXi)
     # M
     fitM <- optim(par=theta, fn=ElboVecTheta, gr=ElboGradVecTheta, data=data, eStep=eStepNew, 
-                  method='BFGS', control=list(fnscale=-1), maxit=iterMax)
+                  method='BFGS', control=list(fnscale=-1, maxit=iterMaxOptim))
     thetaNew <- fitM$par; mStepNew <- Theta2Mstep(thetaNew, n=n, d=d, p=p, q=q)
     #   
     elboPath[iter] <- ElboVecThetaPsi(thetaPsi=c(thetaNew, psiNew), data=data, q=q)
     diff <- max(abs(c(thetaNew, psiNew) - c(theta, psi)))  
     theta <- thetaNew; mStep <- Theta2Mstep(theta, n=n, d=d, p=p, q=q)
     psi <- psiNew; eStep <- Psi2Estep(psi, n=n, d=d, p=p, q=q)
-    cat(q, iter, ':', diff, fitVE$value, fitM$value, elboPath[iter], '\n')
-    if(iter%%10==0){
+    if(iter%%round(sqrt(iterMax))==0){
+      cat(q, iter, ':', diff, fitVE$value, fitM$value, elboPath[iter], '\n')
       plot(elboPath[1:iter], type='b', ylim=quantile(elboPath[1:iter], prob=c(0.1, 1)))
     }
   }

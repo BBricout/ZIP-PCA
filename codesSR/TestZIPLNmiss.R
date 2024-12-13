@@ -5,15 +5,16 @@ seed <- 1; set.seed(seed)
 # seed <- .Random.seed
 source('Functions/FunctionsZIP.R')
 source('Functions/FunctionsZIPLNmiss.R')
+source('Functions/FunctionsUtils.R')
 simDir <- '../simulSR/'
 figDir <- '../plotsSR/'
 
 # Parms
-n <- 500; d <- 20; p <- 30; q <- 2; obs <- 0.6
-n <- 100; d <- 5; p <- 10; q <- 2; obs <- 0.6
+n <- 100; d <- 2; p <- 5; q <- 2; obs <- 0.95; coefC <- 0.1
+# n <- 100; d <- 5; p <- 10; q <- 2; obs <- 0.6
 
 # Simul
-simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
+simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-coefC', coefC, '-seed', seed)
 simNameFull <- paste0('ZiPLNsim', simParmsFull)
 simFileFull <- paste0(simDir, simNameFull, '-noMiss.Rdata')
 load(simFileFull)
@@ -24,13 +25,13 @@ if(!file.exists(simFile)){
   sim <- SimZiPLNmiss(sim=sim, obs=obs)
   save(sim, file=simFile)
 }else{load(simFile)}
-c(sum(diag(cov(matrix(data$X%*%true$mstep$beta, n, p)))), sum(diag(cov(true$latent$Z))))
+c(sum(diag(cov(matrix(data$X%*%true$mStep$beta, n, p)))), sum(diag(cov(true$latent$Z))))
 
 # # First iterations
-# ELBO(data=data, mStep=true$mstep, eStep=true$eStep)
+# ELBO(data=data, mStep=true$mStep, eStep=true$eStep)
 # init <- InitZiPLN(data, q)
 # ELBO(data=data, mStep=init$mStep, eStep=init$eStep)
-# mStep <- Mstep(data=data, mStep=init$mStep, eStep=init$eStep)
+# mStep <- mStep(data=data, mStep=init$mStep, eStep=init$eStep)
 # ELBO(data=data, mStep=mStep, eStep=init$eStep)
 # eStep <- VEstep(data=data, mStep=mStep, eStep=init$eStep)
 # ELBO(data=data, mStep=mStep, eStep=eStep)
@@ -68,10 +69,10 @@ if(!file.exists(fitFile)){
 # # if(exportFig){dev.off()}
 
 # Results
-lm(as.vector(vem$mStep$C%*%t(vem$mStep$C)) ~ -1 + as.vector(true$mstep$C%*%t(true$mstep$C)))$coef
+lm(as.vector(vem$mStep$C%*%t(vem$mStep$C)) ~ -1 + as.vector(true$mStep$C%*%t(true$mStep$C)))$coef
 pseudoCovW <- t(vem$eStep$M)%*%vem$eStep$M/n + diag(colMeans(vem$eStep$S))
 pseudoCovW
-c(ELBO(data=data, mStep=true$mstep, eStep=true$eStep), 
+c(ELBO(data=data, mStep=true$mStep, eStep=true$eStep), 
   ELBO(data=data, mStep=init$mStep, eStep=true$eStep),
   ELBO(data=data, mStep=vem$mStep, eStep=vem$eStep))
 
@@ -93,12 +94,12 @@ summary(sapply(1:n, function(i){jk$fit_iList[[i]]$iter}))
 vem$elbo
 hist(sapply(1:n, function(i){diff(range(jk$fit_iList[[i]]$elboPath))}), main='', xlab='', ylab='')
 
-rbind(true=true$mstep$gamma, vem=vem$mStep$gamma, sd=sqrt(diag(jk$cov$gamma)),
+rbind(true=true$mStep$gamma, vem=vem$mStep$gamma, sd=sqrt(diag(jk$cov$gamma)),
       stat=vem$mStep$gamma / sqrt(diag(jk$cov$gamma)), 
-      statTrue=(vem$mStep$gamma - true$mstep$gamma) / sqrt(diag(jk$cov$gamma)))
+      statTrue=(vem$mStep$gamma - true$mStep$gamma) / sqrt(diag(jk$cov$gamma)))
 
-rbind(true=true$mstep$beta, vem=vem$mStep$beta, sd=sqrt(diag(jk$cov$beta)),
+rbind(true=true$mStep$beta, vem=vem$mStep$beta, sd=sqrt(diag(jk$cov$beta)),
       stat=vem$mStep$beta / sqrt(diag(jk$cov$beta)), 
-      statTrue=(vem$mStep$beta - true$mstep$beta) / sqrt(diag(jk$cov$beta)))
+      statTrue=(vem$mStep$beta - true$mStep$beta) / sqrt(diag(jk$cov$beta)))
 
 # Predictions

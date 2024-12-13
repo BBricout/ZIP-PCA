@@ -10,14 +10,19 @@ figDir <- '../plotsSR/'
 exportFig <- FALSE
 
 # Parms
-n <- 100; d <- 5; p <- 10; q <- 2
+n <- 100; d <- 2; p <- 5; q <- 2
 baseSimName <- 'ZiPLNsim'; baseFitName <- 'ZiPLNfit'; 
 # baseSimName <- 'ZiPLNsim-sameX1'; baseFitName <- 'ZiPLNfit-sameX1';
-seedList <- 1:10; seedNb <- length(seedList)
-obsList <- c(1, 0.99, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5); obsNb <- length(obsList)
+# seedList <- 1:10; seedNb <- length(seedList)
+# obsList <- c(1, 0.99, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5); obsNb <- length(obsList)
+seedList <- 1:100; seedNb <- length(seedList)
+obsList <- c(1, 0.99); obsNb <- length(obsList)
 
-for(seed in seedList){ # seed <- 2
-  for(oo in 1:obsNb){ # oo <- 3
+
+for(oo in 1:1){ # oo <- 1
+  thetaTrue <- thetaHat <- matrix(NA, length(seedList), 2*d+p*q)
+  colnames(thetaTrue) <- colnames(thetaHat) <- c(paste0('gamma', 1:d), paste0('beta', 1:d), paste0('C', 1:(p*q)))
+  for(seed in seedList){ # seed <- 1
     obs <- obsList[[oo]]
     # Data
     simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
@@ -34,37 +39,39 @@ for(seed in seedList){ # seed <- 2
       true$latent$Yfull <- data$Y
       load(simFile)
       load(fitFile)
+      thetaTrue[seed, ] <- c(true$mStep$gamma, true$mStep$beta, as.vector(true$mStep$C))
+      thetaHat[seed, ] <- c(vem$mStep$gamma, vem$mStep$beta, as.vector(vem$mStep$C))
       # Oracle & preds
       oracle <- OracleZiPLN(data=data, latent=true$latent)
       pred <- PredZiPLN(data=data, fit=vem)
       # Truth
-      elboTrue <- ELBO(data=data, mStep=true$mstep, eStep=true$eStep)
+      elboTrue <- ELBO(data=data, mStep=true$mStep, eStep=true$eStep)
       elboInit <- ELBO(data=data, mStep=init$mStep, eStep=init$eStep)
       # Results
-      if(exportFig){png(paste0(figDir, fitName, '.png'))}
-      par(mfrow=c(3, 3), pch=20, cex=0.75)
-      plot(vem$elboPath, type='b', xlab='iter', main=simParms, ylim=quantile(vem$elboPath, probs=c(0.1, 1)))
-      abline(h=elboTrue, col=2, lty=2, lwd=2)
-      text(0.6*vem$iter, mean(quantile(vem$elboPath, probs=c(0.1, 1))), label=round(elboTrue))
-      text(0.8*vem$iter, mean(quantile(vem$elboPath, probs=c(0.1, 1))), label=round(elboInit))
-      plot(true$mstep$gamma, init$mStep$gamma, col=4, pch=21, ylim=range(c(vem$mStep$gamma, oracle$mStep$gamma))); abline(a=0, b=1, h=0, v=0)
-      points(true$mstep$gamma, oracle$mStep$gamma, col=2, pch=21)
-      points(true$mstep$gamma, vem$mStep$gamma)
-      boxplot(vem$eStep$xi ~ true$latent$U)
-      hist(vem$eStep$xi, breaks=sqrt(n*p))
-      plot(true$mstep$beta, init$mStep$beta, col=4, pch=21); abline(a=0, b=1, h=0, v=0)
-      points(true$mstep$beta, oracle$mStep$beta, col=2, pch=21)
-      points(true$mstep$beta, vem$mStep$beta)
-      plot(true$mstep$C%*%t(true$mstep$C), init$mStep$C%*%t(init$mStep$C), col=4, pch=21, ylim=range(cbind(vem$mStep$C%*%t(vem$mStep$C), oracle$mStep$C%*%t(oracle$mStep$C)))); abline(a=0, b=1, h=0, v=0)
-      points(true$mstep$C%*%t(true$mstep$C), oracle$mStep$C%*%t(oracle$mStep$C), col=2, pch=21);
-      points(true$mstep$C%*%t(true$mstep$C), vem$mStep$C%*%t(vem$mStep$C));
-      # plot(true$W, vem$eStep$M); abline(a=0, b=1, h=0, v=0)
-      plot(true$latent$Z, vem$eStep$M%*%t(vem$mStep$C)); abline(a=0, b=1, h=0, v=0)
-      plot(1+true$latent$Yfull, 1+vem$pred$Yhat, log='xy', xlab='Y', ylab='pred', col=2-data$Omega); abline(a=0, b=1, h=0, v=0)
-      points(1+true$latent$Yfull[which(data$Omega==0)], 1+vem$pred$Yhat[which(data$Omega==0)], col=2)
-      if(exportFig){dev.off()}
+      # if(exportFig){png(paste0(figDir, fitName, '.png'))}
+      # par(mfrow=c(3, 3), pch=20, cex=0.75)
+      # plot(vem$elboPath, type='b', xlab='iter', main=simParms, ylim=quantile(vem$elboPath, probs=c(0.1, 1)))
+      # abline(h=elboTrue, col=2, lty=2, lwd=2)
+      # text(0.6*vem$iter, mean(quantile(vem$elboPath, probs=c(0.1, 1))), label=round(elboTrue))
+      # text(0.8*vem$iter, mean(quantile(vem$elboPath, probs=c(0.1, 1))), label=round(elboInit))
+      # plot(true$mStep$gamma, init$mStep$gamma, col=4, pch=21, ylim=range(c(vem$mStep$gamma, oracle$mStep$gamma))); abline(a=0, b=1, h=0, v=0)
+      # points(true$mStep$gamma, oracle$mStep$gamma, col=2, pch=21)
+      # points(true$mStep$gamma, vem$mStep$gamma)
+      # boxplot(vem$eStep$xi ~ true$latent$U)
+      # hist(vem$eStep$xi, breaks=sqrt(n*p))
+      # plot(true$mStep$beta, init$mStep$beta, col=4, pch=21); abline(a=0, b=1, h=0, v=0)
+      # points(true$mStep$beta, oracle$mStep$beta, col=2, pch=21)
+      # points(true$mStep$beta, vem$mStep$beta)
+      # plot(true$mStep$C%*%t(true$mStep$C), init$mStep$C%*%t(init$mStep$C), col=4, pch=21, ylim=range(cbind(vem$mStep$C%*%t(vem$mStep$C), oracle$mStep$C%*%t(oracle$mStep$C)))); abline(a=0, b=1, h=0, v=0)
+      # points(true$mStep$C%*%t(true$mStep$C), oracle$mStep$C%*%t(oracle$mStep$C), col=2, pch=21);
+      # points(true$mStep$C%*%t(true$mStep$C), vem$mStep$C%*%t(vem$mStep$C));
+      # # plot(true$W, vem$eStep$M); abline(a=0, b=1, h=0, v=0)
+      # plot(true$latent$Z, vem$eStep$M%*%t(vem$mStep$C)); abline(a=0, b=1, h=0, v=0)
+      # plot(1+true$latent$Yfull, 1+vem$pred$Yhat, log='xy', xlab='Y', ylab='pred', col=2-data$Omega); abline(a=0, b=1, h=0, v=0)
+      # points(1+true$latent$Yfull[which(data$Omega==0)], 1+vem$pred$Yhat[which(data$Omega==0)], col=2)
+      # if(exportFig){dev.off()}
       
-      lm(as.vector(vem$mStep$C%*%t(vem$mStep$C)) ~ -1 + as.vector(true$mstep$C%*%t(true$mstep$C)))$coef
+      lm(as.vector(vem$mStep$C%*%t(vem$mStep$C)) ~ -1 + as.vector(true$mStep$C%*%t(true$mStep$C)))$coef
       pseudoCovW <- t(vem$eStep$M)%*%vem$eStep$M/n + diag(colMeans(vem$eStep$S))
       pseudoCovW
       
@@ -84,4 +91,7 @@ for(seed in seedList){ # seed <- 2
               mean(((true$latent$Yfull - pred$cond$lZipCI)*(pred$cond$uZipCI - true$latent$Yfull) > 0)[missCondPres])))
     }
   }
+  par(mfrow=c(2, 2))
+  thetaStat <- (thetaHat - thetaTrue)/apply(thetaHat, 2, sd, na.rm=TRUE)
+  for(h in 1:4){qqnorm(thetaHat[, h], main=colnames(thetaTrue)[h]); abline(0, 1)}
 }

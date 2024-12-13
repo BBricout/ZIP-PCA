@@ -8,7 +8,8 @@ source('Functions/FunctionsZIPLNmiss.R')
 simDir <- '../simulSR/'
 
 # Parms: many small sims
-n <- 100; d <- 5; p <- 10; q <- 2
+n <- 100; d <- 2; p <- 5; q <- 2; coefC <- 0.1
+# n <- 100; d <- 5; p <- 10; q <- 2; obs <- 0.6
 baseSimName <- 'ZiPLNsim'
 seedList <- 1:100; seedNb <- length(seedList)
 obsList <- c(1, 0.99, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5); obsNb <- length(obsList)
@@ -26,11 +27,11 @@ X0 <- NULL
 # Simul
 for(seed in 1:100){
   set.seed(seed)
-  simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
+  simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-coefC', coefC, '-seed', seed)
   simNameFull <- paste0(baseSimName, simParmsFull)
   simFileFull <- paste0(simDir, simNameFull, '-noMiss.Rdata')
   if(!file.exists(simFileFull)){
-    sim <- SimZiPLN(n=n, p=p, d=d, q=q, X=X0)
+    sim <- SimZiPLN(n=n, p=p, d=d, q=q, X=X0, coefC=coefC)
     obsTresh <- matrix(runif(n*p), n, p)
     data <- list(X=sim$X, Y=sim$Y, obsTresh=obsTresh, ij=sim$ij, logFactY=lgamma(sim$Y+1))
     true <- list(mStep=list(gamma=sim$gamma, beta=sim$beta, C=sim$C), 

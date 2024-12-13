@@ -23,7 +23,7 @@ ComputeXi <- function(data, mStep, eStep, tolXi=1e-4){
 
 ################################################################################
 # Simul
-SimZiPLN <- function(n, p, d, q, beta0=2, X=NULL){
+SimZiPLN <- function(n, p, d, q, coefC=1, beta0=2, X=NULL){
   if(is.null(X)){X <- matrix(rnorm(n*p*d), n*p, d); X[, 1] <- 1}
   ij <- cbind(rep(1:n, p), rep(1:p, each=n))
   # presence

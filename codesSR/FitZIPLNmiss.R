@@ -10,11 +10,13 @@ source('Functions/FunctionsZIPLNmissVec.R')
 simDir <- '../simulSR/'
 
 # Parms: many small sims
-n <- 100; d <- 5; p <- 10; q <- 2
+n <- 100; d <- 2; p <- 5; q <- 2; coefC <- 0.1
 baseSimName <- 'ZiPLNsim'; baseFitName <- 'ZiPLNfit'; 
 # baseSimName <- 'ZiPLNsim-sameX1'; baseFitName <- 'ZiPLNfit-sameX1';
 seedList <- 1:10; seedNb <- length(seedList)
 obsList <- c(1, 0.99, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5); obsNb <- length(obsList)
+seedList <- 1:100; seedNb <- length(seedList)
+obsList <- c(1, 0.9); obsNb <- length(obsList)
 
 # # Parms: one big sim
 # n <- 500; d <- 20; p <- 30; q <- 5
@@ -22,9 +24,9 @@ obsList <- c(1, 0.99, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5); obsNb <- length(obsList)
 # obsList <- c(0.6); obsNb <- length(obsList)
 
 # 1 example
-simFile <- "ZiPLNsim-n100-d5-p10-q2-seed1-obs95.Rdata"
+simFile <- "ZiPLNsim-n100-d2-p5-q2-coefC0.1-seed1-obs95.Rdata"
 load(paste0(simDir, simFile))
-fitFile <- "ZiPLNfit-n100-d5-p10-q2-seed1-obs95.Rdata"
+fitFile <- "ZiPLNfit-n100-d2-p5-q2-coefC0.1-seed1-obs95.Rdata"
 load(paste0(simDir, fitFile))
 vem$eStep$xi <- ComputeXi(data=data, mStep=vem$mStep, eStep=vem$eStep)
 vem$elbo <- ELBO(data=data, mStep=vem$mStep, eStep=vem$eStep)
@@ -60,11 +62,11 @@ fit$value
 mStep <- Theta2Mstep(fit$par, n=n, d=d, p=p, q=q)
 
 # Loop over sims
-for(seed in seedList){
-  for(oo in 1:obsNb){
+for(oo in 1:obsNb){
+  for(seed in seedList){
     obs <- obsList[[oo]]; set.seed(seed)
     # Data
-    simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-seed', seed)
+    simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-coefC', coefC, '-seed', seed)
     simParms <- paste0(simParmsFull, '-obs', 100*obs)
     simName <- paste0(baseSimName, simParms)
     simFile <- paste0(simDir, simName, '.Rdata')
@@ -74,7 +76,7 @@ for(seed in seedList){
     fitFile <- paste0(simDir, fitName, '.Rdata')
     if(!file.exists(fitFile)){
       print(simName)
-      init <- InitZiPLN(data)
+      init <- InitZiPLN(data, q=q)
       vem <- VemZiPLN(data, init=init)
       save(init, vem, file=fitFile)
     }
