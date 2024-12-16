@@ -35,7 +35,7 @@ logLik <- function(gamma, beta, Y, Y0, X){
 }
 
 # Algorithme EM
-EmZIP <- function(X, Y, tol=1e-6, iterMax=1e3){
+EmZIP <- function(X, Y, tol=1e-4, iterMax=1e3){
   Y0 <- 1*(Y==0)
   start <- initZIP(X, Y, Y0)
   gamma <- start$gamma; beta <- start$beta

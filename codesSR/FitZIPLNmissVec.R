@@ -11,7 +11,7 @@ simDir <- '../simulSR/'
 
 # Parms: 
 # n <- 100; d <- 5; p <- 10; q <- 2; obs <- 0.70; seed <- 1
-n <- 100; d <- 2; p <- 5; q <- 2; coefC <- 0.1; seed <- 3; obs <- 1
+n <- 100; d <- 2; p <- 5; q <- 2; coefC <- 0.5; seed <- 3; obs <- 1
 simParms <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-coefC', coefC, '-seed', seed, '-obs', 100*obs)
 baseSimName <- 'ZiPLNsim'; baseFitName <- 'ZiPLNfit'; 
 seedList <- 1:100; seedNb <- length(seedList)
@@ -61,8 +61,8 @@ obsList <- c(1, 0.9); obsNb <- length(obsList)
 # plot(elboPath, type='b', ylim=quantile(elboPath, prob=c(0.1, 1)))
 
 # Loop over sims
-for(oo in 1:obsNb){
-  for(seed in seedList){
+for(oo in 1:obsNb){ # oo <- 1
+  for(seed in seedList){ # seed <- 1
     obs <- obsList[[oo]]; set.seed(seed)
     # Data
     simParmsFull <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-coefC', coefC, '-seed', seed)

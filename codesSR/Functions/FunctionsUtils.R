@@ -20,23 +20,27 @@ ComputeXi <- function(data, mStep, eStep, tolXi=1e-4){
   xi[which(data$Omega*data$Y>0)] <- 1
   return(xi)
 }
+MakeCOrtho <- function(C){
+  q <- ncol(C); eigC <- eigen(C%*%t(C))
+  return(eigC$vectors[, 1:q]%*%diag(sqrt(eigC$values[1:q])))
+}
 
 ################################################################################
 # Simul
-SimZiPLN <- function(n, p, d, q, coefC=1, beta0=2, X=NULL){
+SimZiPLN <- function(n, p, d, q, coefC=1, beta=NULL, gamma=NULL, C=NULL, X=NULL){
   if(is.null(X)){X <- matrix(rnorm(n*p*d), n*p, d); X[, 1] <- 1}
   ij <- cbind(rep(1:n, p), rep(1:p, each=n))
   # presence
-  gamma <- rnorm(d)/sqrt(d)
+  if(is.null(gamma)){gamma <- rnorm(d)/sqrt(d)}
   nu <- matrix(X%*%gamma, n, p)
   probU <- plogis(nu)
   U <- matrix(rbinom(n*p, 1, probU), n, p)
   # latent
   W <- matrix(rnorm(n*q), n, q)
-  C <- matrix(rnorm(p*q), p, q)/sqrt(q)
+  if(is.null(C)){C <- matrix(rnorm(p*q), p, q)/sqrt(q)}
   Z <- W%*%t(C)
   # abundance
-  beta <- rnorm(d)/sqrt(d); beta[1] <- beta[1] + beta0
+  if(is.null(beta)){beta <- rnorm(d)/sqrt(d)}
   mu <- matrix(X%*%beta, n, p)
   lambdaY <- exp(mu + Z)
   Yall <- matrix(rpois(n*p, lambdaY), n, p)

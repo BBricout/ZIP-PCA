@@ -113,7 +113,7 @@ NegElboLogSGradVecThetaPsi <- function(thetaPsiLogS, data, q, tolXi=1e-4){
 
 ################################################################################
 # VEM
-VemZiPLNvec <- function(data, init, tol=1e-4, iterMax=1e3, iterMaxOptim=1e1, tolXi=1e-4, tolS=1e-4, plot=TRUE){
+VemZiPLNvec <- function(data, init, tol=1e-5, iterMax=5e3, iterMaxOptim=1e1, tolXi=1e-4, tolS=1e-4, plot=TRUE){
   # tol=1e-4; iterMax=1e3; tolXi=1e-4; tolS=1e-4; plot=TRUE
   n <- nrow(data$Y); d <- ncol(data$X); q <- ncol(init$eStep$M); p <- ncol(data$Y)
   mStep <- init$mStep; theta <- Mstep2Theta(mStep, n=n, d=d, p=p, q=q)
@@ -121,7 +121,7 @@ VemZiPLNvec <- function(data, init, tol=1e-4, iterMax=1e3, iterMaxOptim=1e1, tol
   elboPath <- rep(NA, iterMax)
   iter <- 1; diff <- 2*tol
   elboPath[iter] <- ElboVecThetaPsi(thetaPsi=c(theta, psi), data=data, q=q)
-  while((iter & iterMax) & (diff > tol)){
+  while((iter < iterMax) & (diff > tol)){
     iter <- iter+1
     # # VE + M
     # fit <- optim(par=c(theta, psi), fn=ElboVecThetaPsi, gr=ElboGradVecThetaPsi, data=data,

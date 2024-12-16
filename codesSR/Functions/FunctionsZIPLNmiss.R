@@ -281,6 +281,8 @@ VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4, p
   pred <- NuMuA(data=data, mStep=mStep, eStep=eStep)
   pred$Yhat <- eStep$xi * pred$A
   elboPath <- elboPath[1:iter]
+  if(plot){plot(elboPath[1:iter], type='b', xlab='iter', ylab='elbo', main='ZiPLN', 
+                ylim=quantile(elboPath[1:iter], probs=c(0.1, 1), na.rm=TRUE))}
   return(list(mStep=mStep, eStep=eStep, pred=pred, iter=iter, elboPath=elboPath, elbo=elboPath[iter]))
 }
 
