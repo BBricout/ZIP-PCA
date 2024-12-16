@@ -252,9 +252,11 @@ JackknifeZiPLN <- function(data, fit, iterMax=1e3){
 
 ################################################################################
 # VEM
-VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4, plot=TRUE){
-  # init <- InitZiPLN(data, q=2); q=2; tol=1e-4; iterMax=1e3; tolXi=1e-5; tolS=1e-5; plot=TRUE
+VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4, plot=TRUE, orthC=FALSE){
+  # init <- InitZiPLN(data, q=2); q=2; tol=1e-4; iterMax=1e3; tolXi=1e-4; tolS=1e-2; plot=TRUE; orthC <- TRUE
   mStep <- init$mStep; eStep <- init$eStep
+  # # Orthogonalzation of C
+  # if(orthC){mStep$C <- MakeCOrtho(mStep$C)}
   elboPath <- rep(NA, iterMax)
   diff <- 2*tol; iter <- 1
   elboPath[iter] <- ELBO(data=data, mStep=mStep, eStep=eStep)
@@ -262,6 +264,8 @@ VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4, p
   while((iter < iterMax) & (diff > tol)){
     iter <- iter+1
     mStepNew <- Mstep(data=data, mStep=mStep, eStep=eStep)
+    # # Orthogonalzation of C
+    # if(orthC){mStepNew$C <- MakeCOrtho(mStepNew$C)}
     eStepNew <- VEstep(data=data, mStep=mStepNew, eStep=eStep, tolXi=tolXi, tolS=tolS)
     elboPath[iter] <- ELBO(data=data, mStep=mStepNew, eStep=eStepNew)
     if(elboPath[iter] < elboPath[iter-1]){

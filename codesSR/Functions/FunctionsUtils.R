@@ -22,6 +22,7 @@ ComputeXi <- function(data, mStep, eStep, tolXi=1e-4){
 }
 MakeCOrtho <- function(C){
   q <- ncol(C); eigC <- eigen(C%*%t(C))
+  # Sigma <- C%*%t(C); P <- eigC$vectors; Lambda <- eigC$values
   return(eigC$vectors[, 1:q]%*%diag(sqrt(eigC$values[1:q])))
 }
 
