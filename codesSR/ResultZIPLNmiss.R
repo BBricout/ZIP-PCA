@@ -17,7 +17,7 @@ baseSimName <- 'ZiPLNsim'; baseFitName <- 'ZiPLNfit'; basePlotName <- 'ZiPLNplot
 # seedList <- 1:10; seedNb <- length(seedList)
 # obsList <- c(1, 0.99, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5); obsNb <- length(obsList)
 seedList <- 1:100; seedNb <- length(seedList)
-obsList <- c(1, 0.9, 0.5); obsNb <- length(obsList)
+obsList <- c(1); obsNb <- length(obsList)
 parmsGene <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-coefC', coefC)
 
 for(oo in 1:obsNb){ # oo <- 2
@@ -104,4 +104,9 @@ for(oo in 1:obsNb){ # oo <- 2
   for(h in 1:4){qqnorm(thetaStat[, h], main=paste(coefC, obs, colnames(thetaTrue)[h]), na.rm=TRUE, pch=20); 
     abline(a=0, b=1, h=0, v=0)}
   if(exportFig){dev.off()}
+  res <- rbind(colMeans((thetaHat - thetaTrue)[, 1:(2*d)], na.rm=TRUE), 
+               colMeans(thetaStat[, 1:(2*d)], na.rm=TRUE), 
+               thetaSd[1:(2*d)])
+  rownames(res) <- c('bias', 'stat', 'sd')
+  print(res)
 }

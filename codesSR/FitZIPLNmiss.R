@@ -10,12 +10,12 @@ source('Functions/FunctionsZIPLNmiss.R')
 simDir <- '../simulSR/'
 
 # Parms: many small sims
-orthC <- TRUE
+orthC <- FALSE
 baseSimName <- 'ZiPLNsim'; baseFitName <- 'ZiPLNfit'; 
-n <- 100; d <- 2; p <- 5; q <- 2; coefC <- 1
-obsList <- c(1, 0.9, 0.5); obsNb <- length(obsList); seedList <- 100:1; seedNb <-  length(seedList)
-# n <- 500; d <- 2; p <- 5; q <- 2; coefC <- 1
-# obsList <- c(1); obsNb <- length(obsList); seedList <- 100:1; seedNb <-  length(seedList)
+# n <- 100; d <- 2; p <- 5; q <- 2; coefC <- 1
+# obsList <- c(1, 0.9, 0.5); obsNb <- length(obsList); seedList <- 1:100; seedNb <-  length(seedList)
+n <- 500; d <- 2; p <- 5; q <- 2; coefC <- 1
+obsList <- c(1); obsNb <- length(obsList); seedList <- 100:1; seedNb <-  length(seedList)
 
 # # Parms: one big sim
 # n <- 500; d <- 20; p <- 30; q <- 5
