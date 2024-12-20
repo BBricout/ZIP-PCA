@@ -252,7 +252,7 @@ JackknifeZiPLN <- function(data, fit, iterMax=1e3){
 
 ################################################################################
 # VEM
-VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e3, tolXi=1e-4, tolS=1e-4, plot=TRUE, orthC=FALSE){
+VemZiPLN <- function(data, init, tol=1e-4, iterMax=5e3, tolXi=1e-4, tolS=1e-4, plot=TRUE, orthC=FALSE){
   # init <- InitZiPLN(data, q=2); q=2; tol=1e-4; iterMax=1e3; tolXi=1e-4; tolS=1e-2; plot=TRUE; orthC <- TRUE
   mStep <- init$mStep; eStep <- init$eStep
   # # Orthogonalzation of C

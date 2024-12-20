@@ -7,7 +7,7 @@ source('Functions/FunctionsZIPLNmiss.R')
 library('bizicount')
 simDir <- '../simulSR/'
 figDir <- '../plotsSR/'
-exportFig <- FALSE
+exportFig <- TRUE
 
 # Parms
 n <- 500; d <- 2; p <- 5; q <- 2; coefC <- 1
@@ -20,10 +20,11 @@ seedList <- 1:100; seedNb <- length(seedList)
 obsList <- c(1); obsNb <- length(obsList)
 parmsGene <- paste0('-n', n, '-d', d, '-p', p, '-q', q, '-coefC', coefC)
 
-for(oo in 1:obsNb){ # oo <- 2
+for(oo in 1:obsNb){ # oo <- 1
   obs <- obsList[[oo]]
   thetaTrue <- thetaHat <- matrix(NA, seedNb, 2*d+p*q)
   colnames(thetaTrue) <- colnames(thetaHat) <- c(paste0('gamma', 1:d), paste0('beta', 1:d), paste0('C', 1:(p*q)))
+  iter <- rep(NA, seedNb)
   for(seed in seedList){ # seed <- 1
     # Data
     parmsName <- paste0(parmsGene, '-seed', seed)
@@ -44,8 +45,9 @@ for(oo in 1:obsNb){ # oo <- 2
       load(fitFile)
       if(length(vem) > 1){
         thetaHat[seed, ] <- c(vem$mStep$gamma, vem$mStep$beta, as.vector(vem$mStep$C))
+        iter[seed] <- vem$iter
+        cat(thetaTrue[seed, 1:(2*d)], thetaHat[seed, 1:(2*d)], '\n')
       }
-      cat(thetaTrue[seed, 1:(2*d)], thetaHat[seed, 1:(2*d)], '\n')
       # # Oracle & preds
       # oracle <- OracleZiPLN(data=data, latent=true$latent)
       # pred <- PredZiPLN(data=data, fit=vem)
@@ -109,4 +111,13 @@ for(oo in 1:obsNb){ # oo <- 2
                thetaSd[1:(2*d)])
   rownames(res) <- c('bias', 'stat', 'sd')
   print(res)
+  print(summary(iter)); boxplot(iter)
 }
+
+# Check pred
+plot(data$X%*%true$mStep$beta + as.vector(true$latent$W%*%t(true$mStep$C)), 
+     data$X%*%vem$mStep$beta + as.vector(vem$eStep$M%*%t(vem$mStep$C)))
+abline(0, 1, h=0, v=0)
+plot(as.vector(true$latent$W%*%t(true$mStep$C)), 
+     as.vector(vem$eStep$M%*%t(vem$mStep$C)))
+abline(0, 1, h=0, v=0)
