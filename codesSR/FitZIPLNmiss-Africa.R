@@ -9,6 +9,7 @@ source('Functions/FunctionsZIPLNmiss.R')
 # Dirs 
 dataDir <- '../dataSR/'; dataName <- 'Souchet-raw'
 dataDir <- '../dataSR/'; dataName <- 'Souchet-miss50'
+dataDir <- '../dataSR/'; dataName <- 'Souchet-year2000-raw'
 dataFile <- paste0(dataDir, dataName, '.Rdata')
 load(dataFile)
 n <- nrow(data$Y); d <- ncol(data$X); p <- ncol(data$Y); 
@@ -49,6 +50,6 @@ gradS <- t(sapply(1:n, function(i){
 par(mfrow=c(2, 2))
 plot(vem$elboPath, type='b', xlab='iter', ylab='elbo', main='ZiPLN', 
      ylim=quantile(vem$elboPath, probs=c(0.1, 1), na.rm=TRUE))
-hist(gradC)
-hist(gradM, breaks=sqrt(prod(dim(gradM))))
-hist(gradS, breaks=sqrt(prod(dim(gradS))))
+hist(log10(abs(gradC)))
+hist(log10(abs(gradM)), breaks=sqrt(prod(dim(gradM))))
+hist(log10(abs(gradS)), breaks=sqrt(prod(dim(gradS))))

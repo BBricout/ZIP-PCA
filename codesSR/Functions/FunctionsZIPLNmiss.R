@@ -280,7 +280,8 @@ VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e4, tolXi=1e-4, tolS=1e-4, p
       if(plot){plot(elboPath[1:iter], type='b', xlab='iter', ylab='elbo', main='ZiPLN', 
                     ylim=quantile(elboPath[1:iter], probs=c(0.1, 1), na.rm=TRUE))}
       cat(' /', iter, ':', elboPath[iter], diff)
-      save(mStep, eStep, file=paste0(dirTmp, 'TmpFitVemZiPLN.Rdata'))
+      save(mStep, eStep, file=paste0(dirTmp, '/TmpFitVemZiPLN-n', nrow(data$Y), 
+                                     '-p', ncol(data$Y), '-q', q, '.Rdata'))
     }else{if(prod(dim(data$Y)) > 3000){cat('', iter)}}
   }
   cat(' /', iter, ':', elboPath[iter], diff, '\n')
