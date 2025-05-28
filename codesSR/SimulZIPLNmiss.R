@@ -8,7 +8,7 @@ source('Functions/FunctionsZIPLNmiss.R')
 simDir <- '../simulSR/'
 
 # Parms: many small sims
-n <- 500; d <- 2; p <- 5; q <- 2; coefC <- 1
+n <- 1000; d <- 2; p <- 5; q <- 2; coefC <- 1
 # n <- 100; d <- 5; p <- 10; q <- 2; obs <- 0.6
 baseSimName <- 'ZiPLNsim'
 seedList <- 1:100; seedNb <- length(seedList)

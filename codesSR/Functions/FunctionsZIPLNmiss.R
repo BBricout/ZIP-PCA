@@ -19,13 +19,13 @@ NuMuA <- function(data, mStep, eStep){
 
 ################################################################################
 # Init
-InitZiPLN <- function(data, q, tolXi=1e-4, initS=1){
+InitZiPLN <- function(data, q, tolXi=1e-4, initS=1, plot=FALSE){
   obs <- which(data$Omega==1)
   reg <- lm(as.vector(log(1+data$Y))[obs] ~ -1 + data$X[obs, ])
   res <- matrix(0, nrow(data$Y), ncol(data$Y))
   res[obs] <- reg$residuals
   pca <- prcomp(res, rank=q)
-  zip <- EmZIP(X=data$X[obs, ], Y=as.vector(data$Y)[obs])
+  zip <- EmZIP(X=data$X[obs, ], Y=as.vector(data$Y)[obs], plot=plot)
   # zip <- zeroinfl(as.vector(data$Y[obs]) ~ data$X[obs, ], dist='poisson')
   # zip$gamma <- -zip$coefficients$zero; zip$beta <- zip$coefficients$count
   if(q==1){C=pca$rotation*pca$sdev[1]}else{C=pca$rotation %*% diag(pca$sdev[1:q, drop=FALSE])}
@@ -252,8 +252,9 @@ JackknifeZiPLN <- function(data, fit, iterMax=1e3){
 
 ################################################################################
 # VEM
-VemZiPLN <- function(data, init, tol=1e-4, iterMax=5e3, tolXi=1e-4, tolS=1e-4, plot=TRUE, orthC=FALSE){
-  # init <- InitZiPLN(data, q=2); q=2; tol=1e-4; iterMax=1e3; tolXi=1e-4; tolS=1e-2; plot=TRUE; orthC <- TRUE
+VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e4, tolXi=1e-4, tolS=1e-4, plot=TRUE, orthC=FALSE){
+  # init <- InitZiPLN(data, q=2); q=2; tol=1e-4; iterMax=1e3; tolXi=1e-4; tolS=1e-2; plot=TRUE; orthC=FALSE
+  dirTmp <- getwd()
   mStep <- init$mStep; eStep <- init$eStep
   # # Orthogonalzation of C
   # if(orthC){mStep$C <- MakeCOrtho(mStep$C)}
@@ -279,6 +280,7 @@ VemZiPLN <- function(data, init, tol=1e-4, iterMax=5e3, tolXi=1e-4, tolS=1e-4, p
       if(plot){plot(elboPath[1:iter], type='b', xlab='iter', ylab='elbo', main='ZiPLN', 
                     ylim=quantile(elboPath[1:iter], probs=c(0.1, 1), na.rm=TRUE))}
       cat(' /', iter, ':', elboPath[iter], diff)
+      save(mStep, eStep, file=paste0(dirTmp, 'TmpFitVemZiPLN.Rdata'))
     }else{if(prod(dim(data$Y)) > 3000){cat('', iter)}}
   }
   cat(' /', iter, ':', elboPath[iter], diff, '\n')

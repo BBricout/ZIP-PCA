@@ -7,10 +7,11 @@ source('Functions/FunctionsZIPLNmiss.R')
 library('bizicount')
 simDir <- '../simulSR/'
 figDir <- '../plotsSR/'
-exportFig <- TRUE
+exportFig <- FALSE
+
 
 # Parms
-n <- 500; d <- 2; p <- 5; q <- 2; coefC <- 1
+n <- 1000; d <- 2; p <- 5; q <- 2; coefC <- 1
 vec <- FALSE
 baseSimName <- 'ZiPLNsim'; baseFitName <- 'ZiPLNfit'; basePlotName <- 'ZiPLNplot'
 # baseSimName <- 'ZiPLNsim-sameX1'; baseFitName <- 'ZiPLNfit-sameX1';
@@ -106,18 +107,18 @@ for(oo in 1:obsNb){ # oo <- 1
   for(h in 1:4){qqnorm(thetaStat[, h], main=paste(coefC, obs, colnames(thetaTrue)[h]), na.rm=TRUE, pch=20); 
     abline(a=0, b=1, h=0, v=0)}
   if(exportFig){dev.off()}
-  res <- rbind(colMeans((thetaHat - thetaTrue)[, 1:(2*d)], na.rm=TRUE), 
-               colMeans(thetaStat[, 1:(2*d)], na.rm=TRUE), 
-               thetaSd[1:(2*d)])
+  res <- rbind(colMeans((thetaHat - thetaTrue)[, 1+c(0, d)], na.rm=TRUE), 
+               colMeans(thetaStat[, 1+c(0, d)], na.rm=TRUE), 
+               thetaSd[1+c(0, d)])
   rownames(res) <- c('bias', 'stat', 'sd')
   print(res)
   print(summary(iter)); boxplot(iter)
 }
 
-# Check pred
-plot(data$X%*%true$mStep$beta + as.vector(true$latent$W%*%t(true$mStep$C)), 
-     data$X%*%vem$mStep$beta + as.vector(vem$eStep$M%*%t(vem$mStep$C)))
-abline(0, 1, h=0, v=0)
-plot(as.vector(true$latent$W%*%t(true$mStep$C)), 
-     as.vector(vem$eStep$M%*%t(vem$mStep$C)))
-abline(0, 1, h=0, v=0)
+# # Check pred
+# plot(data$X%*%true$mStep$beta + as.vector(true$latent$W%*%t(true$mStep$C)), 
+#      data$X%*%vem$mStep$beta + as.vector(vem$eStep$M%*%t(vem$mStep$C)))
+# abline(0, 1, h=0, v=0)
+# plot(as.vector(true$latent$W%*%t(true$mStep$C)), 
+#      as.vector(vem$eStep$M%*%t(vem$mStep$C)))
+# abline(0, 1, h=0, v=0)

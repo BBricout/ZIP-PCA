@@ -14,8 +14,8 @@ orthC <- FALSE
 baseSimName <- 'ZiPLNsim'; baseFitName <- 'ZiPLNfit'; 
 # n <- 100; d <- 2; p <- 5; q <- 2; coefC <- 1
 # obsList <- c(1, 0.9, 0.5); obsNb <- length(obsList); seedList <- 1:100; seedNb <-  length(seedList)
-n <- 500; d <- 2; p <- 5; q <- 2; coefC <- 1
-obsList <- c(1); obsNb <- length(obsList); seedList <- 1:100; seedNb <-  length(seedList)
+n <- 1000; d <- 2; p <- 5; q <- 2; coefC <- 1
+obsList <- c(0.9); obsNb <- length(obsList); seedList <- 100:1; seedNb <-  length(seedList)
 
 # # Parms: one big sim
 # n <- 500; d <- 20; p <- 30; q <- 5
@@ -79,7 +79,8 @@ for(oo in 1:obsNb){ # oo <- 1
     if(file.exists(fitFile)){
       load(fitFile)
     }
-    if((!file.exists(fitFile)) | (vem$iter==1000)){
+    # if((!file.exists(fitFile)) | (vem$iter==1000)){
+    if(!file.exists(fitFile)){
       print(fitName)
       init <- InitZiPLN(data, q=q)
       vem <- try(VemZiPLN(data, init=init, orthC=orthC))

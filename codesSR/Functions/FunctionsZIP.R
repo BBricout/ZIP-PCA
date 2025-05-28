@@ -35,7 +35,7 @@ logLik <- function(gamma, beta, Y, Y0, X){
 }
 
 # Algorithme EM
-EmZIP <- function(X, Y, tol=1e-4, iterMax=1e3){
+EmZIP <- function(X, Y, tol=1e-4, iterMax=1e3, plot=FALSE){
   Y0 <- 1*(Y==0)
   start <- initZIP(X, Y, Y0)
   gamma <- start$gamma; beta <- start$beta
@@ -55,6 +55,12 @@ EmZIP <- function(X, Y, tol=1e-4, iterMax=1e3){
     if(iter > 1){diff <- max(max(abs(tauNew-tau)), max(gammaNew-gamma), max(betaNew-beta))}
     logL[iter] <- logLik(gamma, beta, Y, Y0, X)
     gamma <- gammaNew; beta <- betaNew; tau <- tauNew
+    if(plot){if(iter%%round(sqrt(iterMax))==0){
+      plot(logL[1:iter], ylim=quantile(logL[1:iter], probs=c(0.1, 1)), type='b', main='ZIP')
+    }}
   }
-  return(list(gamma=-gamma, beta=beta, iter, logLpath=logL, logL=logL[iter]))
+  if(plot){
+    plot(logL[1:iter], ylim=quantile(logL[1:iter], probs=c(0.1, 1)), type='b', main='ZIP')
+  }
+  return(list(gamma=-gamma, beta=beta, iter=iter, logLpath=logL[1:iter], logL=logL[iter]))
 }
