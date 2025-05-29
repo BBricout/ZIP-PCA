@@ -123,7 +123,7 @@ ElboGradMiSi <- function(miSi, datai, mStep, eStepi){
 }
 
 
-VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-4){
+VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-3, splitMS=FALSE){
   n <- nrow(data$Y); p <- ncol(data$Y); d <- ncol(data$X); q <- ncol(eStep$M)
   nuMuA <- NuMuA(data=data, mStep=mStep, eStep=eStep)
   nu <- nuMuA$nu; A <- nuMuA$A
@@ -161,10 +161,18 @@ VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-4){
   MS <- t(sapply(1:n, function(i){
     datai <- list(Yi=data$Y[i, ], Xi=data$X[which(data$ij[, 1]==i), ], 
                   Omegai=data$Omega[i, ], logFactYi=data$logFactY[i, ])
-    eStepi <- list(xii=eStep$xi[i, ], mi=eStep$M[i, , drop=FALSE], Si=eStep$S[i, , drop=FALSE])
-    optim(par=c(eStepi$mi, eStepi$Si), fn=ElboMiSi, gr=ElboGradMiSi, 
-          datai=datai, mStep=mStep, eStepi=eStepi, 
-          method='L-BFGS-B', control=list(fnscale=-1), lower=c(rep(-Inf, q), rep(tolS, q)))$par
+    if(splitMS){
+      eStepi <- list(xii=eStep$xi[i, ], mi=eStep$M[i, ], Si=eStep$S[i, ])
+      c(optim(par=eStepi$mi, fn=ElboMi, gr=ElboGradMi, datai=datai, mStep=mStep, eStepi=eStepi, 
+                    method='BFGS', control=list(fnscale=-1))$par,
+        optim(par=eStepi$Si, fn=ElboSi, gr=ElboGradSi, datai=datai, mStep=mStep, eStepi=eStepi, 
+              method='L-BFGS-B', control=list(fnscale=-1), lower=rep(tolS, q))$par)
+    }else{
+      eStepi <- list(xii=eStep$xi[i, ], mi=eStep$M[i, , drop=FALSE], Si=eStep$S[i, , drop=FALSE])
+      optim(par=c(eStepi$mi, eStepi$Si), fn=ElboMiSi, gr=ElboGradMiSi, 
+            datai=datai, mStep=mStep, eStepi=eStepi, 
+            method='L-BFGS-B', control=list(fnscale=-1), lower=c(rep(-Inf, q), rep(tolS, q)))$par
+    }
   }))
   eStepTmp <- list(xi=eStep$xi, M=MS[, 1:q, drop=FALSE], S=MS[, q+(1:q), drop=FALSE])
   if(ELBO(data=data, mStep=mStep, eStep=eStepTmp) > ELBO(data=data, mStep=mStep, eStep=eStep)){
@@ -252,7 +260,7 @@ JackknifeZiPLN <- function(data, fit, iterMax=1e3){
 
 ################################################################################
 # VEM
-VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e4, tolXi=1e-4, tolS=1e-4, plot=TRUE, orthC=FALSE){
+VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e4, tolXi=1e-4, tolS=1e-4, plot=TRUE, orthC=FALSE, splitMS=FALSE){
   # init <- InitZiPLN(data, q=2); q=2; tol=1e-4; iterMax=1e3; tolXi=1e-4; tolS=1e-2; plot=TRUE; orthC=FALSE
   dirTmp <- getwd()
   mStep <- init$mStep; eStep <- init$eStep
@@ -267,7 +275,7 @@ VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e4, tolXi=1e-4, tolS=1e-4, p
     mStepNew <- Mstep(data=data, mStep=mStep, eStep=eStep)
     # # Orthogonalzation of C
     # if(orthC){mStepNew$C <- MakeCOrtho(mStepNew$C)}
-    eStepNew <- VEstep(data=data, mStep=mStepNew, eStep=eStep, tolXi=tolXi, tolS=tolS)
+    eStepNew <- VEstep(data=data, mStep=mStepNew, eStep=eStep, tolXi=tolXi, tolS=tolS, splitMS=splitMS)
     elboPath[iter] <- ELBO(data=data, mStep=mStepNew, eStep=eStepNew)
     if(elboPath[iter] < elboPath[iter-1]){
       cat('', iter, ':', 'E-1', ELBO(data=data, mStep=mStep, eStep=eStep), 

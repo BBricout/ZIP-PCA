@@ -2,10 +2,6 @@
 
 rm(list=ls()); par(mfrow=c(1, 1), pch=20); palette('R3')
 
-source('Functions/FunctionsUtils.R')
-source('Functions/FunctionsZIP.R')
-source('Functions/FunctionsZIPLNmiss.R')
-# source('Functions/FunctionsZIPLNmissVec.R')
 library(lori)
 
 # Dirs 
@@ -21,7 +17,7 @@ years <- as.numeric(gsub('X', '', colnames(Y)))
 yearThresh <- min(years)
 yearThresh <- 2000
 hist(colMeans(is.na(Y)), breaks=sqrt(n))
-missThresh <- 100
+missThresh <- 50
 
 # Covariates
 covSite <- read.table(paste0(dataDir, 'cov_sites.csv'), sep=';', header=TRUE, dec=',')[, -1]
