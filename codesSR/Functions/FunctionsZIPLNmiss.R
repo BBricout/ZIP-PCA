@@ -123,7 +123,7 @@ ElboGradMiSi <- function(miSi, datai, mStep, eStepi){
 }
 
 
-VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-3, splitMS=FALSE){
+VEstep <- function(data, mStep, eStep, tolXi=1e-4, tolS=1e-4, splitMS=FALSE){
   n <- nrow(data$Y); p <- ncol(data$Y); d <- ncol(data$X); q <- ncol(eStep$M)
   nuMuA <- NuMuA(data=data, mStep=mStep, eStep=eStep)
   nu <- nuMuA$nu; A <- nuMuA$A
@@ -260,7 +260,7 @@ JackknifeZiPLN <- function(data, fit, iterMax=1e3){
 
 ################################################################################
 # VEM
-VemZiPLN <- function(data, init, tol=1e-4, iterMax=1e4, tolXi=1e-4, tolS=1e-4, plot=TRUE, orthC=FALSE, splitMS=FALSE){
+VemZiPLN <- function(data, init, tol=1e-6, iterMax=5e4, tolXi=1e-4, tolS=1e-4, plot=TRUE, orthC=FALSE, splitMS=FALSE){
   # init <- InitZiPLN(data, q=2); q=2; tol=1e-4; iterMax=1e3; tolXi=1e-4; tolS=1e-2; plot=TRUE; orthC=FALSE
   dirTmp <- getwd()
   mStep <- init$mStep; eStep <- init$eStep

@@ -1,15 +1,16 @@
 # Sim and fit ZI-PLN
 
+setwd('/home/robin/Bureau/Barbara/ZIP-PCA/codesSR')
 rm(list=ls()); par(mfrow=c(1, 1), pch=20); palette('R3')
 
 source('Functions/FunctionsUtils.R')
 source('Functions/FunctionsZIP.R')
 source('Functions/FunctionsZIPLNmiss.R')
-splitMS <- TRUE
+splitMS <- FALSE
 
 # Dirs 
-dataDir <- '../dataSR/'; dataName <- 'Souchet-raw'
-dataDir <- '../dataSR/'; dataName <- 'Souchet-miss50'
+# dataDir <- '../dataSR/'; dataName <- 'Souchet-raw'
+# dataDir <- '../dataSR/'; dataName <- 'Souchet-miss50'
 # dataDir <- '../dataSR/'; dataName <- 'Souchet-year2000-raw'
 dataDir <- '../dataSR/'; dataName <- 'Souchet-year2000-miss50'
 dataFile <- paste0(dataDir, dataName, '.Rdata')
@@ -18,6 +19,9 @@ n <- nrow(data$Y); d <- ncol(data$X); p <- ncol(data$Y);
 
 # Algo parms
 orthC <- FALSE; q <- 2
+
+# Description
+plot(rowMeans(data$Y), apply(data$Y, 1, sd))
 
 # Fit
 initFile <- paste0(dataDir, dataName, '-initZiPLNmiss.Rdata')
@@ -29,13 +33,14 @@ if(!file.exists(initFile)){
 if(splitMS){
   fitFile <- paste0(dataDir, dataName, '-fitZiPLNmiss-splitMS.Rdata')
 }else{
-  fitFile <- paste0(dataDir, dataName, '-fitZiPLNmiss-splitMS', splitMS, '.Rdata')
+  fitFile <- paste0(dataDir, dataName, '-fitZiPLNmiss.Rdata')
 }
 print(fitFile)
 if(!file.exists(fitFile)){
   print(dataName)
   vem <- try(VemZiPLN(data=data, init=init, orthC=orthC, splitMS=splitMS))
-  # vem <- try(VemZiPLN(data=data, init=vem, orthC=orthC))
+  # par(mfrow=c(1, 1))
+  # vem <- try(VemZiPLN(data=data, init=vem, orthC=orthC,  splitMS=splitMS))
   save(init, vem, file=fitFile)
 }else{load(fitFile)}
 
@@ -73,6 +78,6 @@ points(colMeans(pred$marg$esp), type='b', col=4)
 points(colMeans(pred$cond$esp), type='b', col=2)
 points(colMeans(pred$nuMuA$A), type='b', col=3)
 
-plot(data.frame(M=as.vector(vem$eStep$M), S=as.vector(vem$eStep$S), 
+plot(data.frame(M=as.vector(vem$eStep$M), log10S=as.vector(log10(vem$eStep$S)), 
                 log10gradM=as.vector(log10(abs(gradM))),
                 log10gradS=as.vector(log10(abs(gradS)))))
